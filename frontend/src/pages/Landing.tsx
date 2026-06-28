@@ -1,19 +1,29 @@
-import { motion } from 'framer-motion';
+import { useEffect, useState, useRef } from 'react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   Zap, Shield, TrendingUp, Cloud, Bot, ArrowRight, CheckCircle,
   GitBranch, Rocket, ShieldAlert, Cpu, Hammer, FileText, Check, X,
-  Code, Sparkles, AlertTriangle
+  Code, Sparkles, AlertTriangle, ArrowDown, Database, Cpu as CpuIcon, Play
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/constants';
+import { cn } from '@/utils';
 
-// ─── Capability Cards Data ───────────────────────────────────────
+// ─── Constants & Data ─────────────────────────────────────────────
+
+const STATS = [
+  { label: 'Intelligent Analysis Modules', value: '12' },
+  { label: 'Specialized AI Agents', value: '4' },
+  { label: 'Automated Production Checks', value: '100+' },
+  { label: 'Launch Readiness Score', value: '1' },
+];
+
 const CAPABILITIES = [
   {
     icon: <Shield size={20} className="text-emerald-600" />,
     label: 'Security Audit',
-    desc: 'Automated OWASP Top 10 vulnerability scanner checking for SQL injections, secrets exposure, and packages flaws.',
+    desc: 'Automated OWASP Top 10 vulnerability scanner checking for SQL injections, secrets exposure, and package flaws.',
     graphic: (
       <div className="mt-4 p-3 bg-red-50 rounded-xl border border-red-100 font-mono text-[10px] text-red-700 space-y-1">
         <p className="font-bold flex items-center gap-1"><ShieldAlert size={12} /> SQL Injection Risk</p>
@@ -36,7 +46,7 @@ const CAPABILITIES = [
     ),
   },
   {
-    icon: <Cpu size={20} className="text-emerald-600" />,
+    icon: <CpuIcon size={20} className="text-emerald-600" />,
     label: 'Performance Analysis',
     desc: 'Identifies runtime inefficiencies, slow database connection threads, and CPU caching failures.',
     graphic: (
@@ -101,8 +111,8 @@ const CAPABILITIES = [
     desc: 'Generates automated code patches to fix security loopholes and package updates.',
     graphic: (
       <div className="mt-4 p-2 bg-gray-900 text-gray-300 rounded-xl border border-gray-800 font-mono text-[9px] space-y-0.5">
-        <p className="text-red-400">- query = 'SELECT * FROM products WHERE name LIKE "%' + q + '%"'</p>
-        <p className="text-emerald-400">+ query = "SELECT * FROM products WHERE name LIKE ?"</p>
+        <p className="text-red-400">{"- query = 'SELECT * FROM products WHERE name LIKE \"%' + q + '%\"'"}</p>
+        <p className="text-emerald-400">{"+ query = 'SELECT * FROM products WHERE name LIKE ?'"}</p>
       </div>
     ),
   },
@@ -119,8 +129,6 @@ const CAPABILITIES = [
   },
 ];
 
-
-// ─── Who Is This For Data ─────────────────────────────────────────
 const AUDIENCES = [
   { title: 'Students', desc: 'Audit class projects, identify architectural errors, and learn enterprise-level deployment practices.' },
   { title: 'Startup Founders', desc: 'Act as your own virtual CTO. Vet offshore code, ensure database safety, and estimate cloud budgets.' },
@@ -129,58 +137,139 @@ const AUDIENCES = [
   { title: 'Freelancers', desc: 'Deliver verified, production-ready applications with concrete launch readiness audits.' },
 ];
 
-const STATS = [
-  { label: 'Intelligent Analysis Modules', value: '12' },
-  { label: 'Specialized AI Agents', value: '4' },
-  { label: 'Automated Production Checks', value: '100+' },
-  { label: 'Launch Readiness Score', value: '1' },
-];
+// ─── Floating Architecture Network Canvas ───────────────────────
 
-// ─── Animation Variants ───────────────────────────────────────────
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
+function NetworkCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
-};
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationId: number;
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = 650);
+
+    const handleResize = () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = 650;
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Nodes definition
+    const nodes = Array.from({ length: 28 }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      radius: Math.random() * 2 + 1.5,
+    }));
+
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      // Draw connection edges
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x;
+          const db = nodes[i].y - nodes[j].y;
+          const dist = Math.sqrt(dx * dx + db * db);
+
+          if (dist < 130) {
+            ctx.strokeStyle = `rgba(16, 185, 129, ${0.12 * (1 - dist / 130)})`;
+            ctx.beginPath();
+            ctx.moveTo(nodes[i].x, nodes[i].y);
+            ctx.lineTo(nodes[j].x, nodes[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Draw nodes
+      for (const node of nodes) {
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius + 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Update positions
+        node.x += node.vx;
+        node.y += node.vy;
+
+        // Bounce boundaries
+        if (node.x < 0 || node.x > width) node.vx *= -1;
+        if (node.y < 0 || node.y > height) node.vy *= -1;
+      }
+
+      animationId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationId);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 -z-10 pointer-events-none" />;
+}
+
+// ─── Landing Component ────────────────────────────────────────────
 
 export default function LandingPage() {
+  const problemRef = useRef<HTMLDivElement>(null);
+  const [activePreview, setActivePreview] = useState<'score' | 'security' | 'architecture' | 'cost' | 'fixes'>('score');
+
+  const scrollToWorks = () => {
+    problemRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-text font-body selection:bg-primary-100 selection:text-primary-700">
-      {/* ─── Hero Section ─── */}
-      <section className="relative pt-32 pb-24 border-b border-border flex items-center justify-center overflow-hidden">
-        {/* Subtle grid background */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-40 -z-10" />
+    <div className="min-h-screen bg-[#FAFAFA] text-text font-body selection:bg-primary-100 selection:text-primary-700 overflow-x-hidden">
+      {/* ─── 1. HERO SECTION ─── */}
+      <section className="relative pt-36 pb-28 border-b border-border flex flex-col items-center justify-center overflow-hidden">
+        {/* Floating Background network lines canvas */}
+        <NetworkCanvas />
 
         <div className="w-full max-w-content mx-auto px-6 flex flex-col items-center text-center">
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="max-w-4xl"
+            transition={{ duration: 0.65, ease: 'easeOut' }}
+            className="max-w-4xl space-y-6"
           >
-            <h1 className="font-heading text-display-lg text-text tracking-tight font-extrabold leading-none mb-6">
+            <h1 className="font-heading text-display-lg text-text tracking-tight font-extrabold leading-none">
               Meet Your AI CTO <br />
               <span className="bg-gradient-to-r from-emerald-600 to-emerald-400 bg-clip-text text-transparent">
-                Before You Deploy
+                Before You Deploy.
               </span>
             </h1>
-            <p className="text-subtitle-lg text-text-muted max-w-3xl mx-auto mb-10 leading-relaxed">
-              AppDoctor AI analyzes your entire software project before deployment, reviews security, architecture, scalability, cloud costs, technical debt and business readiness, then tells you exactly what to fix before shipping to production.
+            <p className="text-subtitle-lg text-text-muted max-w-2xl mx-auto leading-relaxed">
+              Modern AI writes code. <br />
+              AppDoctor AI decides whether it is ready for production.
             </p>
 
-            {/* CTAs */}
-            <div className="flex flex-wrap items-center justify-center gap-4">
+            {/* Direct access button */}
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Button size="lg" variant="primary" leftIcon={<Rocket size={16} />}>
-                <Link to={ROUTES.WORKSPACE}>Open Workspace</Link>
+                <Link to={ROUTES.WORKSPACE}>🚀 Analyze Repository</Link>
+              </Button>
+              <Button size="lg" variant="outline" onClick={scrollToWorks} rightIcon={<ArrowDown size={15} />}>
+                See How It Works
               </Button>
             </div>
 
-            {/* Trust Badges */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-caption text-text-muted font-semibold">
+            {/* Trust checklist */}
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-caption text-text-muted font-bold">
               <span className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> No Setup Required</span>
               <span className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Analyze Public GitHub Repositories</span>
               <span className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> AI-Powered Production Readiness Review</span>
@@ -189,85 +278,80 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Real Product Stats ─── */}
-      <section className="border-b border-border bg-white">
-        <div className="w-full max-w-content mx-auto grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-border text-center">
-          {STATS.map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 + i * 0.08, duration: 0.4 }}
-              className="py-10 px-4"
-            >
-              <span className="text-display-md font-bold text-text tracking-tight font-heading block">
-                {stat.value}
-              </span>
-              <span className="text-caption text-text-muted mt-1 uppercase font-bold tracking-wider block">
-                {stat.label}
-              </span>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── The Problem Section ─── */}
-      <section className="py-24 bg-white border-b border-border">
-        <div className="w-full max-w-4xl mx-auto px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="space-y-6"
-          >
-            <span className="text-caption font-bold text-red-500 uppercase tracking-widest block">The Reality</span>
-            <h2 className="text-h1 font-bold text-text tracking-tight font-heading max-w-2xl mx-auto">
-              Modern AI can write code. <br />
-              <span className="text-red-500">But who reviews the entire application before production?</span>
+      {/* ─── 2. THE PROBLEM SECTION ─── */}
+      <section ref={problemRef} className="py-24 bg-white border-b border-border scroll-mt-10">
+        <div className="w-full max-w-content mx-auto px-6">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="text-caption font-bold text-red-500 uppercase tracking-widest block mb-2">The Vulnerability Trap</span>
+            <h2 className="text-h1 font-bold text-text tracking-tight font-heading">
+              Modern AI can write code. But who reviews it?
             </h2>
-            <p className="text-body-lg text-text-muted max-w-2xl mx-auto leading-relaxed">
+            <p className="text-body-lg text-text-muted mt-2">
               Today's AI coding assistants generate code quickly, but they don't answer critical deployment questions.
             </p>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6 text-left max-w-3xl mx-auto">
-              {[
-                'Is my application secure?',
-                'Will it scale to thousands of users?',
-                'Is my architecture correct?',
-                'Am I exposing secrets?',
-                'How much will cloud infrastructure cost?',
-                'Can I safely deploy today?',
-              ].map((item) => (
-                <div key={item} className="p-4 bg-bg-subtle rounded-xl border border-border flex items-start gap-2">
-                  <span className="text-red-500 font-bold mt-0.5">✕</span>
-                  <span className="text-body-sm font-medium text-text">{item}</span>
-                </div>
-              ))}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Column A: Traditional Deployment Path (Failure) */}
+            <div className="card p-8 border-red-100 bg-red-50/5 space-y-6">
+              <h3 className="text-h3 font-bold text-red-700 flex items-center gap-2"><X size={20} /> Traditional Path</h3>
+              <div className="space-y-4 relative pl-6 border-l border-red-200">
+                {[
+                  { step: 'Developer Writes Code', desc: 'Code is written rapidly using autocomplete coding copilots.' },
+                  { step: 'Pushes to GitHub', desc: 'Code commits are integrated directly without structural verification.' },
+                  { step: 'Deploys to Host', desc: 'Deployments build and trigger automatic cloud allocations.' },
+                  { step: 'Production Issues Appear', desc: 'Vulnerabilities, database leaks, and cost spikes appear in live environments.' },
+                ].map((item, idx) => (
+                  <div key={item.step} className="relative">
+                    <span className="absolute -left-8.5 top-0.5 w-5 h-5 rounded-full bg-red-100 text-red-700 border border-red-200 flex items-center justify-center font-bold text-[10px]">
+                      {idx + 1}
+                    </span>
+                    <h4 className="text-body-sm font-bold text-text">{item.step}</h4>
+                    <p className="text-caption text-text-muted">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <p className="text-body-md text-text font-medium pt-4">
-              Developers often discover these issues after deployment. AppDoctor AI finds them before your users do.
-            </p>
-          </motion.div>
+            {/* Column B: AppDoctor Path (Security) */}
+            <div className="card p-8 border-emerald-100 bg-emerald-50/5 space-y-6">
+              <h3 className="text-h3 font-bold text-emerald-800 flex items-center gap-2"><Check size={20} className="text-emerald-600" /> AppDoctor Path</h3>
+              <div className="space-y-4 relative pl-6 border-l border-emerald-200">
+                {[
+                  { step: 'Repository Uploaded', desc: 'Direct GitHub link mapping takes place in under 5 seconds.' },
+                  { step: 'AI Understands Project', desc: 'Dynamic AST parser constructs project infrastructure schemas.' },
+                  { step: 'Multi-Agent Security Review', desc: 'Checks OWASP vulnerabilities, leaks, database pooling levels.' },
+                  { step: 'Readiness Score Generated', desc: 'Calculates Launch Score with prioritized one-click patches before push.' },
+                ].map((item, idx) => (
+                  <div key={item.step} className="relative">
+                    <span className="absolute -left-8.5 top-0.5 w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center font-bold text-[10px]">
+                      {idx + 1}
+                    </span>
+                    <h4 className="text-body-sm font-bold text-text">{item.step}</h4>
+                    <p className="text-caption text-text-muted">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ─── How It Works (5-step timeline) ─── */}
+      {/* ─── 3. HOW APPDOCTOR WORKS (Horizontal scroll timeline) ─── */}
       <section className="py-24 bg-[#FAFAFA] border-b border-border">
         <div className="w-full max-w-content mx-auto px-6">
           <div className="text-center mb-16">
-            <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Workflow</span>
-            <h2 className="text-h1 font-bold text-text tracking-tight font-heading">How AppDoctor AI Works</h2>
-            <p className="text-body-lg text-text-muted mt-1">Five simple steps to verify your application's readiness.</p>
+            <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Process</span>
+            <h2 className="text-h1 font-bold text-text tracking-tight font-heading">Horizontal Workflow</h2>
+            <p className="text-body-lg text-text-muted mt-1">Four distinct analysis stages inside our Virtual CTO sandbox.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 relative">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
             {[
-              { step: '1', title: 'Upload GitHub Repository', desc: 'Paste repository link or drop zip folder. Complete code sandboxing ensures zero data leaks.' },
-              { step: '2', title: 'AI Understands Project', desc: 'Codebase parser constructs complete logical mapping, language structure, and framework dependencies.' },
-              { step: '3', title: 'AI Specialists Analyze', desc: 'Dedicated AI models assess vulnerabilities, performance issues, database locks, and cloud spend estimates.' },
-              { step: '4', title: 'Receive Launch Score', desc: 'A unified Production Readiness score from 1-100 with prioritised, actionable remediation code patches.' },
-              { step: '5', title: 'Deploy with Confidence', desc: 'Apply fixes in one click and release updates to production with complete structural transparency.' },
+              { step: '1', title: 'GitHub Repository', desc: 'Secure SSH connection pulls repository data directly without storing files.' },
+              { step: '2', title: 'AI Understanding Engine', desc: 'Deep parsing maps structural framework frameworks, dependencies, and file structures.' },
+              { step: '3', title: 'Multi-Agent Audits', desc: 'Dedicated check modules audit cloud spend, SQL injections, and system scalability.' },
+              { step: '4', title: 'Unified Launch Score', desc: 'Consolidated report mapping performance alerts and one-click fixes is prepared.' },
             ].map((s, idx) => (
               <motion.div
                 key={s.step}
@@ -284,90 +368,159 @@ export default function LandingPage() {
                   <h4 className="text-body-sm font-semibold text-text mb-2 font-heading">{s.title}</h4>
                   <p className="text-caption text-text-muted leading-relaxed">{s.desc}</p>
                 </div>
-                {idx < 4 && (
-                  <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 text-text-subtle font-heading text-h2 z-10 opacity-30">
-                    →
-                  </div>
-                )}
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── Mission Control Preview ─── */}
-      <section className="py-24 bg-white border-b border-border overflow-hidden">
+      {/* ─── 4. MISSION CONTROL PREVIEW (Interactive) ─── */}
+      <section className="py-24 bg-white border-b border-border">
         <div className="w-full max-w-content mx-auto px-6">
-          <div className="text-center mb-16">
-            <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Preview</span>
-            <h2 className="text-h1 font-bold text-text tracking-tight font-heading">Mission Control Dashboard</h2>
-            <p className="text-body-lg text-text-muted mt-1">Audit operations center for code health, cloud spend, and security fixes.</p>
+          <div className="text-center mb-16 max-w-2xl mx-auto">
+            <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Interface Preview</span>
+            <h2 className="text-h1 font-bold text-text tracking-tight font-heading">Interactive Dashboard</h2>
+            <p className="text-body-lg text-text-muted mt-2">
+              Explore the core panels of the AppDoctor virtual office. Click tabs below to swap preview screens.
+            </p>
           </div>
 
-          {/* Interactive Mock Dashboard */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98, y: 20 }}
-            whileInView={{ opacity: 1, scale: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="rounded-2xl border border-border bg-[#0B0F19] text-gray-300 shadow-xl overflow-hidden p-6 max-w-4xl mx-auto space-y-6"
-          >
-            {/* Top row */}
-            <div className="flex items-center justify-between border-b border-gray-800 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-red-500" />
-                <div className="w-3 h-3 rounded-full bg-amber-400" />
-                <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                <span className="text-caption text-gray-400 font-mono ml-2">appdoctor.ai / dashboard / Overview</span>
-              </div>
-              <span className="text-caption bg-emerald-950 text-emerald-400 border border-emerald-900 px-2 py-0.5 rounded font-bold font-mono">
-                Launch Score: 74/100
-              </span>
+          {/* Interactive Screen Container */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start max-w-5xl mx-auto">
+            {/* Sidebar Tab Menu */}
+            <div className="lg:col-span-2 space-y-2">
+              {[
+                { key: 'score', label: 'Launch Score Board', desc: 'Weighting performance, security, and infrastructure' },
+                { key: 'security', label: 'Security Threat Manager', desc: 'Live alerts listing database risks and exposures' },
+                { key: 'architecture', label: 'Interactive Architecture Graph', desc: 'Discovered structural service nodes and boundaries' },
+                { key: 'cost', label: 'Cloud Optimizer Module', desc: 'Monthly server spend estimates and savings' },
+                { key: 'fixes', label: 'One-Click Refactoring Fixes', desc: 'Instant patches applying security recommendations' },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActivePreview(tab.key as any)}
+                  className={cn(
+                    'w-full text-left p-4 rounded-xl border transition-all text-body-sm flex flex-col justify-start',
+                    activePreview === tab.key
+                      ? 'bg-primary-500 text-white border-primary-600 shadow-sm'
+                      : 'bg-[#FAFAFA] border-border text-text hover:border-primary-200'
+                  )}
+                >
+                  <span className="font-semibold">{tab.label}</span>
+                  <span className={cn('text-[10px] mt-0.5', activePreview === tab.key ? 'text-primary-100' : 'text-text-muted')}>{tab.desc}</span>
+                </button>
+              ))}
             </div>
 
-            {/* Content row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Box 1 */}
-              <div className="bg-gray-950 p-5 rounded-xl border border-gray-900 space-y-3">
-                <p className="text-caption text-gray-400 uppercase font-semibold">Security Tracker</p>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center bg-red-950/20 p-2 rounded border border-red-900/30 text-[10px] text-red-400">
-                    <span>SQL Injection Risk</span>
-                    <span className="font-bold">CRITICAL</span>
-                  </div>
-                  <div className="flex justify-between items-center bg-amber-950/20 p-2 rounded border border-amber-900/30 text-[10px] text-amber-400">
-                    <span>AWS Access Token Exposed</span>
-                    <span className="font-bold">HIGH</span>
-                  </div>
-                </div>
+            {/* Live screen preview */}
+            <div className="lg:col-span-3 card bg-[#0B0F19] text-gray-300 border border-border min-h-[340px] p-6 shadow-xl flex flex-col justify-between">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
+                <span className="text-[10px] text-gray-400 font-mono">mission-control / screen-preview</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               </div>
 
-              {/* Box 2 */}
-              <div className="bg-gray-950 p-5 rounded-xl border border-gray-900 space-y-3">
-                <p className="text-caption text-gray-400 uppercase font-semibold">Cloud Cost Estimate</p>
-                <p className="text-h2 font-bold text-white font-heading">$1,847/mo</p>
-                <p className="text-caption text-emerald-400">✓ AI saving checks show $521/mo potential savings</p>
-              </div>
+              <div className="flex-1 flex flex-col justify-center">
+                <AnimatePresence mode="wait">
+                  {activePreview === 'score' && (
+                    <motion.div
+                      key="score"
+                      initial={{ opacity: 0, scale: 0.98 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="space-y-4 text-center py-6"
+                    >
+                      <div className="w-20 h-20 rounded-full border-4 border-emerald-500 border-t-transparent flex items-center justify-center mx-auto animate-spin" style={{ animationDuration: '4s' }}>
+                        <span className="text-h2 font-bold text-white">74</span>
+                      </div>
+                      <h4 className="text-body-sm font-semibold text-white">Production Score: 74/100</h4>
+                      <p className="text-caption text-gray-400 max-w-sm mx-auto">Vulnerabilities and database locks have dropped the launch score index. Fix issues to secure pipeline.</p>
+                    </motion.div>
+                  )}
 
-              {/* Box 3 */}
-              <div className="bg-gray-950 p-5 rounded-xl border border-gray-900 space-y-3">
-                <p className="text-caption text-gray-400 uppercase font-semibold">AI CTO Console</p>
-                <div className="space-y-1 text-[10px]">
-                  <p className="text-emerald-400">Bot: "Database session capacity reached at 8k users. Downgrade EC2 size."</p>
-                </div>
+                  {activePreview === 'security' && (
+                    <motion.div
+                      key="security"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="space-y-3"
+                    >
+                      <h4 className="text-body-sm font-semibold text-white">Detected Threats</h4>
+                      <div className="space-y-2 font-mono text-[10px]">
+                        <div className="flex justify-between bg-red-950/20 p-2.5 rounded border border-red-900/30 text-red-400">
+                          <span>SQL Injection Vulnerability (search.ts:42)</span>
+                          <span className="font-bold">CRITICAL</span>
+                        </div>
+                        <div className="flex justify-between bg-amber-950/20 p-2.5 rounded border border-amber-900/30 text-amber-400">
+                          <span>Exposed AWS Secrets String (config.json)</span>
+                          <span className="font-bold">HIGH</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {activePreview === 'architecture' && (
+                    <motion.div
+                      key="architecture"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex justify-center gap-3 items-center py-8"
+                    >
+                      <span className="px-2.5 py-1.5 bg-gray-900 border border-gray-800 rounded font-mono text-[10px]">CDN</span>
+                      <span className="text-emerald-500 text-body-sm">→</span>
+                      <span className="px-2.5 py-1.5 bg-primary-600 text-white rounded font-mono text-[10px] font-bold">API Gateway</span>
+                      <span className="text-emerald-500 text-body-sm">→</span>
+                      <span className="px-2.5 py-1.5 bg-gray-900 border border-gray-800 rounded font-mono text-[10px]">Postgres</span>
+                    </motion.div>
+                  )}
+
+                  {activePreview === 'cost' && (
+                    <motion.div
+                      key="cost"
+                      initial={{ opacity: 0, scale: 0.98 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="space-y-2 text-center py-6"
+                    >
+                      <span className="text-caption text-gray-400 uppercase">Monthly Cloud Projection</span>
+                      <p className="text-display-sm font-bold text-white">$1,847/mo</p>
+                      <p className="text-caption text-emerald-400 font-bold">Potential Savings: $521/mo (28%)</p>
+                    </motion.div>
+                  )}
+
+                  {activePreview === 'fixes' && (
+                    <motion.div
+                      key="fixes"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="space-y-3"
+                    >
+                      <h4 className="text-body-sm font-semibold text-white">Suggested Patches</h4>
+                      <div className="bg-gray-950 p-3 rounded-lg border border-gray-900 font-mono text-[9px] text-gray-300 space-y-1">
+                        <p className="text-red-400">{"- query = 'SELECT * FROM users WHERE name = ' + q"}</p>
+                        <p className="text-emerald-400">{"+ query = 'SELECT * FROM users WHERE name = ?'"}</p>
+                      </div>
+                      <div className="flex justify-end pt-1">
+                        <button className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded text-[10px] transition-colors">Apply Fix</button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* ─── Capabilities Section ─── */}
+      {/* ─── 5. CAPABILITIES SECTION ─── */}
       <section className="py-24 bg-[#FAFAFA] border-b border-border">
         <div className="w-full max-w-content mx-auto px-6">
           <div className="max-w-2xl mb-16">
-            <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Features</span>
+            <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Capabilities</span>
             <h2 className="text-h1 font-bold text-text tracking-tight font-heading">
-              Platform Capabilities
+              Platform Features
             </h2>
             <p className="text-body-lg text-text-muted mt-2">
               Every tool required to audit project readiness packaged in a single workspace.
@@ -394,12 +547,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Why AppDoctor AI Comparison Section ─── */}
+      {/* ─── 6. WHY DEVELOPERS NEED THIS ─── */}
       <section className="py-24 bg-white border-b border-border">
         <div className="w-full max-w-4xl mx-auto px-6">
           <div className="text-center mb-16">
-            <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Contrast</span>
-            <h2 className="text-h1 font-bold text-text tracking-tight font-heading">Why AppDoctor AI?</h2>
+            <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Workflow Analysis</span>
+            <h2 className="text-h1 font-bold text-text tracking-tight font-heading">Unified Audit Platform</h2>
             <p className="text-body-lg text-text-muted mt-1">Replacing fragmented operations with intelligent automation.</p>
           </div>
 
@@ -429,13 +582,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Who Is This For ─── */}
+      {/* ─── 7. WHO IS THIS FOR ─── */}
       <section className="py-24 bg-[#FAFAFA] border-b border-border">
         <div className="w-full max-w-content mx-auto px-6">
           <div className="text-center mb-16">
             <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Audience</span>
             <h2 className="text-h1 font-bold text-text tracking-tight font-heading">Who Is This For?</h2>
-            <p className="text-body-lg text-text-muted mt-1">Architected to bring technical oversight to every developer profile.</p>
+            <p className="text-body-lg text-text-muted mt-1">Bringing architectural oversight to every profile.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
@@ -451,28 +604,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Why Judges Should Care ─── */}
-      <section className="py-24 bg-white border-b border-border">
-        <div className="w-full max-w-4xl mx-auto px-6 text-center space-y-6">
-          <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block">Hackathon Review</span>
-          <h2 className="text-h1 font-bold text-text tracking-tight font-heading">
-            More AI writes code every day. <br />
-            <span className="text-primary-500">Someone needs to review it before deployment.</span>
-          </h2>
-          <p className="text-body-lg text-text-muted max-w-2xl mx-auto leading-relaxed">
-            AI coding agents can rapidly scale code creation, but they increase the risk of insecure or unscalable code deployment. AppDoctor AI acts as the essential production gatekeeper—an AI-powered Virtual CTO helping developers launch compliant, stable, and ready software in minutes.
-          </p>
-        </div>
-      </section>
-
-      {/* ─── Final CTA ─── */}
-      <section className="py-24 bg-[#FAFAFA]">
+      {/* ─── 8. FINAL CTA ─── */}
+      <section className="py-24 bg-white">
         <div className="w-full max-w-3xl mx-auto px-6 text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="card p-12 bg-white border border-border relative overflow-hidden"
+            className="card p-12 bg-[#FAFAFA] border border-border relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary-50 rounded-full blur-3xl opacity-50 -z-10" />
             <div className="w-12 h-12 rounded-xl bg-primary-500 text-white flex items-center justify-center mx-auto mb-6 shadow-sm">
@@ -493,7 +632,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Minimal Footer ─── */}
+      {/* ─── 9. MINIMAL FOOTER ─── */}
       <footer className="py-12 bg-white text-caption text-text-subtle border-t border-border">
         <div className="w-full max-w-content mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <p>© 2026 AppDoctor AI. All rights reserved. Hackathon MVP.</p>
