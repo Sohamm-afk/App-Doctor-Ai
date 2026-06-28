@@ -1,0 +1,242 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Custom Properties ─────────────────────────────────────────── */
+:root {
+  /* Colors */
+  --color-primary:          #10B981;
+  --color-primary-light:    #D1FAE5;
+  --color-primary-dark:     #047857;
+  --color-secondary:        #64748B;
+  --color-bg:               #FAFAFA;
+  --color-bg-card:          #FFFFFF;
+  --color-bg-subtle:        #F8FAFC;
+  --color-bg-muted:         #F1F5F9;
+  --color-text:             #111827;
+  --color-text-muted:       #6B7280;
+  --color-text-subtle:      #9CA3AF;
+  --color-border:           #E5E7EB;
+  --color-border-light:     #F3F4F6;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius */
+  --radius-btn:    12px;
+  --radius-input:  12px;
+  --radius-card:   20px;
+  --radius-dialog: 24px;
+  --radius-badge:  999px;
+
+  /* Transitions */
+  --transition-base:   150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Layout */
+  --navbar-height: 60px;
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 64px;
+  --cto-console-height: 320px;
+  --content-max-width: 1280px;
+}
+
+/* ─── Base Reset ─────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    @apply box-border;
+  }
+
+  html {
+    @apply antialiased scroll-smooth;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-bg text-text font-body;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Manrope', system-ui, sans-serif;
+    @apply font-semibold text-text;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  /* Focus ring — accessible and stylish */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white;
+  }
+
+  /* Remove focus for mouse users */
+  :focus:not(:focus-visible) {
+    @apply outline-none;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-secondary-300;
+  }
+
+  /* Selection color */
+  ::selection {
+    background-color: #D1FAE5;
+    color: #047857;
+  }
+}
+
+/* ─── Component Layer ────────────────────────────────────────────── */
+@layer components {
+  /* Card base */
+  .card {
+    @apply bg-white rounded-xl border border-border shadow-card transition-all duration-200;
+  }
+  .card-hover {
+    @apply hover:shadow-card-hover hover:-translate-y-0.5;
+  }
+  .card-clickable {
+    @apply cursor-pointer hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-card;
+  }
+
+  /* Section container */
+  .content-container {
+    @apply w-full max-w-content mx-auto px-6;
+  }
+
+  /* Page header */
+  .page-header {
+    @apply mb-8;
+  }
+  .page-title {
+    font-family: 'Manrope', system-ui, sans-serif;
+    @apply text-h1 font-bold text-text mb-2;
+  }
+  .page-subtitle {
+    @apply text-body-md text-text-muted;
+  }
+
+  /* Shimmer skeleton */
+  .skeleton {
+    @apply rounded-lg bg-gradient-to-r from-border via-border-light to-border animate-shimmer;
+    background-size: 400% 100%;
+  }
+
+  /* Status dot */
+  .status-dot {
+    @apply inline-block w-2 h-2 rounded-full;
+  }
+
+  /* Terminal line styles */
+  .terminal-line-success { @apply text-emerald-400; }
+  .terminal-line-error   { @apply text-red-400; }
+  .terminal-line-warning { @apply text-amber-400; }
+  .terminal-line-info    { @apply text-blue-400; }
+  .terminal-line-default { @apply text-gray-300; }
+  .terminal-line-muted   { @apply text-gray-500; }
+
+  /* Prose styles for AI output */
+  .ai-prose {
+    @apply text-body-sm text-text leading-relaxed;
+  }
+  .ai-prose p + p { @apply mt-3; }
+  .ai-prose strong { @apply font-semibold text-text; }
+  .ai-prose code {
+    @apply px-1.5 py-0.5 rounded text-caption font-mono bg-secondary-100 text-secondary-700;
+  }
+
+  /* Gradient text */
+  .gradient-text-primary {
+    @apply bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent;
+  }
+
+  /* Glass effect for navbar */
+  .glass-nav {
+    backdrop-filter: blur(12px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    background-color: rgba(250, 250, 250, 0.85);
+  }
+
+  /* Sidebar item */
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-body-sm font-medium text-text-muted
+           transition-all duration-150 cursor-pointer select-none;
+  }
+  .sidebar-item:hover {
+    @apply bg-primary-50 text-primary-700;
+  }
+  .sidebar-item.active {
+    @apply bg-primary-50 text-primary-700 font-semibold;
+  }
+  .sidebar-item.active .sidebar-icon {
+    @apply text-primary-600;
+  }
+
+  /* Badge base */
+  .badge-base {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium;
+  }
+}
+
+/* ─── Utilities Layer ────────────────────────────────────────────── */
+@layer utilities {
+  .text-balance    { text-wrap: balance; }
+  .no-scrollbar    { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .backdrop-blur-nav {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .will-change-transform { will-change: transform; }
+  .will-change-opacity   { will-change: opacity; }
+  .text-shadow-sm {
+    text-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+  .border-gradient-primary {
+    border-image: linear-gradient(135deg, #10B981, #34D399) 1;
+  }
+  .transition-base {
+    transition: all var(--transition-base);
+  }
+  .transition-smooth {
+    transition: all var(--transition-smooth);
+  }
+
+  /* Progress bar animation variable */
+  .progress-bar {
+    animation: progress 1.2s ease-in-out forwards;
+  }
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
