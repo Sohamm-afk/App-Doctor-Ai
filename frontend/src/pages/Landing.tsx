@@ -295,19 +295,21 @@ export default function LandingPage() {
             {/* Column A: Traditional Deployment Path (Failure) */}
             <div className="card p-8 border-red-100 bg-red-50/5 space-y-6">
               <h3 className="text-h3 font-bold text-red-700 flex items-center gap-2"><X size={20} /> Traditional Path</h3>
-              <div className="space-y-4 relative pl-6 border-l border-red-200">
+              <div className="space-y-6 relative pl-2">
                 {[
                   { step: 'Developer Writes Code', desc: 'Code is written rapidly using autocomplete coding copilots.' },
                   { step: 'Pushes to GitHub', desc: 'Code commits are integrated directly without structural verification.' },
                   { step: 'Deploys to Host', desc: 'Deployments build and trigger automatic cloud allocations.' },
                   { step: 'Production Issues Appear', desc: 'Vulnerabilities, database leaks, and cost spikes appear in live environments.' },
                 ].map((item, idx) => (
-                  <div key={item.step} className="relative">
-                    <span className="absolute -left-8.5 top-0.5 w-5 h-5 rounded-full bg-red-100 text-red-700 border border-red-200 flex items-center justify-center font-bold text-[10px]">
+                  <div key={item.step} className="flex gap-4 items-start">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-red-100 text-red-700 border border-red-200 flex items-center justify-center font-bold text-[10px] mt-0.5">
                       {idx + 1}
-                    </span>
-                    <h4 className="text-body-sm font-bold text-text">{item.step}</h4>
-                    <p className="text-caption text-text-muted">{item.desc}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-body-sm font-bold text-text">{item.step}</h4>
+                      <p className="text-caption text-text-muted mt-0.5">{item.desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -316,19 +318,21 @@ export default function LandingPage() {
             {/* Column B: AppDoctor Path (Security) */}
             <div className="card p-8 border-emerald-100 bg-emerald-50/5 space-y-6">
               <h3 className="text-h3 font-bold text-emerald-800 flex items-center gap-2"><Check size={20} className="text-emerald-600" /> AppDoctor Path</h3>
-              <div className="space-y-4 relative pl-6 border-l border-emerald-200">
+              <div className="space-y-6 relative pl-2">
                 {[
                   { step: 'Repository Uploaded', desc: 'Direct GitHub link mapping takes place in under 5 seconds.' },
                   { step: 'AI Understands Project', desc: 'Dynamic AST parser constructs project infrastructure schemas.' },
                   { step: 'Multi-Agent Security Review', desc: 'Checks OWASP vulnerabilities, leaks, database pooling levels.' },
                   { step: 'Readiness Score Generated', desc: 'Calculates Launch Score with prioritized one-click patches before push.' },
                 ].map((item, idx) => (
-                  <div key={item.step} className="relative">
-                    <span className="absolute -left-8.5 top-0.5 w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center font-bold text-[10px]">
+                  <div key={item.step} className="flex gap-4 items-start">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center font-bold text-[10px] mt-0.5">
                       {idx + 1}
-                    </span>
-                    <h4 className="text-body-sm font-bold text-text">{item.step}</h4>
-                    <p className="text-caption text-text-muted">{item.desc}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-body-sm font-bold text-text">{item.step}</h4>
+                      <p className="text-caption text-text-muted mt-0.5">{item.desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>
