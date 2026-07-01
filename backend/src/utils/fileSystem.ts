@@ -16,9 +16,20 @@ export async function cleanDirectory(dirPath: string): Promise<void> {
   }
 }
 
-export async function deleteDirectory(dirPath: string): Promise<void> {
-  if (fs.existsSync(dirPath)) {
-    await fs.promises.rm(dirPath, { recursive: true, force: true });
+export async function deleteDirectory(dirPath: string, retries = 5, delayMs = 300): Promise<void> {
+  if (!fs.existsSync(dirPath)) return;
+  for (let i = 0; i < retries; i++) {
+    try {
+      await fs.promises.rm(dirPath, { recursive: true, force: true });
+      return;
+    } catch (err: any) {
+      if (i === retries - 1) {
+        console.error(`[FileSystem] Failed to delete directory ${dirPath} after ${retries} attempts:`, err);
+        throw err;
+      }
+      console.warn(`[FileSystem] Directory busy or locked, retrying deletion of ${dirPath} in ${delayMs}ms (Attempt ${i + 1}/${retries})...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
   }
 }
 
