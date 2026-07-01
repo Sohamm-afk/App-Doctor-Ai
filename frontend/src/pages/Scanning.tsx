@@ -70,7 +70,7 @@ export default function ScanningPage() {
     }
 
     setApiLoading(true);
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
 
     axios.post(`${apiBaseUrl}/api/analyze`, { github_url })
       .then((res) => {
