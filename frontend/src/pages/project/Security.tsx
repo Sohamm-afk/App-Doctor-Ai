@@ -7,7 +7,6 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { DataTable } from '@/components/common/Table';
 import { SeverityBadge, Badge } from '@/components/ui/Badge';
 import { SkeletonCard } from '@/components/ui/Loading';
-import { mockService } from '@/services/mock';
 import { formatRelativeTime } from '@/utils';
 import { useToast } from '@/components/ui/Toast';
 import type { SecurityIssue, Severity } from '@/types';
@@ -24,16 +23,28 @@ export default function SecurityPage() {
 
   useEffect(() => {
     if (!id) return;
-    mockService.getSecurityIssues(id)
-      .then((data) => {
-        setIssues(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        error('Failed to load security issues', err instanceof Error ? err.message : String(err));
-        setLoading(false);
-      });
-  }, [id, error]);
+    const localScanData = localStorage.getItem(`scan_result_${id}`);
+    if (localScanData) {
+      const scanData = JSON.parse(localScanData);
+      const mappedIssues: SecurityIssue[] = (scanData.security_findings ?? []).map((f: any, idx: number) => ({
+        id: `sec-${idx}`,
+        projectId: id,
+        title: f.title,
+        description: f.description,
+        severity: f.severity,
+        category: f.title.toLowerCase().includes('secret') || f.title.toLowerCase().includes('password') ? 'sensitive-data' : 'injection',
+        filePath: f.file,
+        lineNumber: f.lineNumber,
+        remediation: `Inspect file at ${f.file} line ${f.lineNumber} to resolve: ${f.description}`,
+        status: 'open',
+        createdAt: new Date().toISOString(),
+      }));
+      setIssues(mappedIssues);
+    } else {
+      setIssues([]);
+    }
+    setLoading(false);
+  }, [id]);
 
   const filtered = filter === 'all'
     ? issues
