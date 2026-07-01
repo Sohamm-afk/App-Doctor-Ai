@@ -38,7 +38,7 @@ export default function UploadPage() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      navigate(ROUTES.WORKSPACE_SCAN);
+      navigate(ROUTES.WORKSPACE_SCAN, { state: { github_url: activeTab === 'url' ? url : '' } });
     }, 1200);
   };
 

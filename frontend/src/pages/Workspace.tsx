@@ -35,12 +35,15 @@ export default function WorkspacePage() {
       });
   }, [error]);
 
-  const filtered = projects.filter((p) =>
-    search
-      ? p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.framework.toLowerCase().includes(search.toLowerCase())
-      : true,
-  );
+  const filtered = (projects ?? []).filter((p) => {
+    if (!p) return false;
+    const name = p.name ?? '';
+    const framework = p.framework ?? '';
+    return search
+      ? name.toLowerCase().includes(search.toLowerCase()) ||
+        framework.toLowerCase().includes(search.toLowerCase())
+      : true;
+  });
 
   return (
     <div>

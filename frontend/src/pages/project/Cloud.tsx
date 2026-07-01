@@ -33,13 +33,11 @@ export default function CloudPage() {
       });
   }, [id, error]);
 
-  const pieData = estimate
-    ? estimate.breakdown.map((item, i) => ({
-        name: item.service,
-        value: item.cost,
-        color: CHART_COLOR_LIST[i % CHART_COLOR_LIST.length],
-      }))
-    : [];
+  const pieData = (estimate?.breakdown ?? []).map((item, i) => ({
+    name: item.service,
+    value: item.cost,
+    color: CHART_COLOR_LIST[i % CHART_COLOR_LIST.length],
+  }));
 
   const columns: TableColumn<CloudCostBreakdown>[] = [
     {
@@ -62,7 +60,7 @@ export default function CloudPage() {
     },
   ];
 
-  const totalSavings = estimate?.optimizations.reduce((acc, curr) => acc + curr.savings, 0) ?? 0;
+  const totalSavings = (estimate?.optimizations ?? []).reduce((acc, curr) => acc + curr.savings, 0);
 
   return (
     <div>
@@ -138,7 +136,7 @@ export default function CloudPage() {
           <h3 className="text-h4 font-semibold text-text">Cost Optimization Insights</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          {estimate?.optimizations.map((opt) => (
+          {(estimate?.optimizations ?? []).map((opt) => (
             <AIRecommendationCard
               key={opt.id}
               title={opt.title}
