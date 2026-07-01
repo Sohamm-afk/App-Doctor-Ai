@@ -5,7 +5,6 @@ import { GitBranch, ShieldAlert, Cpu, Database, Network, Server, ArrowRight } fr
 import ReactFlow, { Background, Controls, Node, Edge } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-import { mockService } from '@/services/mock';
 import { Drawer } from '@/components/ui/Drawer';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -41,10 +40,140 @@ export default function ArchitecturePage() {
 
   useEffect(() => {
     if (!id) return;
-    mockService.getArchitecture(id)
-      .then((data) => {
-        // Map mock architecture nodes to React Flow Node structure
-        const flowNodes: Node[] = data.nodes.map((node: any) => ({
+    const localScanData = localStorage.getItem(`scan_result_${id}`);
+    if (localScanData) {
+      const scanData = JSON.parse(localScanData);
+      const metadata = scanData.metadata || {};
+
+      const hasFrontend = metadata.frontend && metadata.frontend !== 'none';
+      const hasBackend = metadata.backend && metadata.backend !== 'none';
+      
+      let hasDatabase = false;
+      let databaseTech = 'Not Detected';
+      const techList = JSON.stringify(scanData).toLowerCase();
+      if (techList.includes('mongoose') || techList.includes('mongodb')) {
+        hasDatabase = true;
+        databaseTech = 'MongoDB / Mongoose';
+      } else if (techList.includes('pg') || techList.includes('postgres') || techList.includes('sequelize')) {
+        hasDatabase = true;
+        databaseTech = 'PostgreSQL';
+      } else if (techList.includes('mysql') || techList.includes('mysql2')) {
+        hasDatabase = true;
+        databaseTech = 'MySQL';
+      } else if (techList.includes('redis')) {
+        hasDatabase = true;
+        databaseTech = 'Redis';
+      }
+
+      const tempNodes: any[] = [];
+      const tempEdges: any[] = [];
+      let yPos = 100;
+      let xPos = 100;
+
+      if (hasFrontend) {
+        tempNodes.push({
+          id: 'node-client',
+          type: 'client',
+          label: 'Client App',
+          position: { x: xPos, y: yPos },
+          data: {
+            technology: metadata.frontend,
+            description: `Auto-detected web frontend using ${metadata.frontend || 'Not Detected'}.`,
+            health: 'healthy',
+            metrics: {
+              fileCount: metadata.file_count || 'Not Detected',
+              languages: (metadata.languages || []).join(', ') || 'Not Detected',
+            }
+          }
+        });
+        xPos += 240;
+      }
+
+      if (hasBackend) {
+        tempNodes.push({
+          id: 'node-server',
+          type: 'gateway',
+          label: 'API Server',
+          position: { x: xPos, y: yPos },
+          data: {
+            technology: metadata.backend,
+            description: `Auto-detected web API backend using ${metadata.backend || 'Not Detected'}.`,
+            health: 'healthy',
+            metrics: {
+              framework: metadata.backend || 'Not Detected',
+              packageManager: metadata.important_files?.some((f: string) => f === 'package.json') ? 'NPM/Yarn' : 'Not Detected',
+            }
+          }
+        });
+
+        if (hasFrontend) {
+          tempEdges.push({
+            id: 'edge-client-server',
+            source: 'node-client',
+            target: 'node-server',
+            label: 'HTTP REST',
+          });
+        }
+        xPos += 240;
+      }
+
+      if (hasDatabase) {
+        tempNodes.push({
+          id: 'node-database',
+          type: 'database',
+          label: 'Database Layer',
+          position: { x: xPos, y: yPos },
+          data: {
+            technology: databaseTech,
+            description: `Detected database driver dependencies for ${databaseTech}.`,
+            health: 'healthy',
+            metrics: {
+              databaseType: databaseTech,
+            }
+          }
+        });
+
+        if (hasBackend) {
+          tempEdges.push({
+            id: 'edge-server-database',
+            source: 'node-server',
+            target: 'node-database',
+            label: 'Queries',
+          });
+        }
+      }
+
+      const hasDocker = metadata.docker_supported;
+      const hasCicd = metadata.important_files?.some((f: string) => f.includes('.github/workflows'));
+      if (hasDocker || hasCicd) {
+        tempNodes.push({
+          id: 'node-deployment',
+          type: 'cdn',
+          label: 'Deployment & CI/CD',
+          position: { x: 250, y: 250 },
+          data: {
+            technology: hasDocker ? 'Docker / GitHub Actions' : 'GitHub Actions',
+            description: `Auto-discovered deployment pipeline configurations.`,
+            health: 'healthy',
+            metrics: {
+              dockerfile: hasDocker ? 'Detected' : 'Not Detected',
+              ciPipeline: hasCicd ? 'Detected' : 'Not Detected',
+            }
+          }
+        });
+
+        if (hasBackend) {
+          tempEdges.push({
+            id: 'edge-server-deploy',
+            source: 'node-server',
+            target: 'node-deployment',
+            label: 'Deploy Build',
+          });
+        }
+      }
+
+      // Map dynamic nodes to React Flow structure
+      const flowNodes: Node[] = tempNodes.map((node: any) => ({
         id: node.id,
         position: node.position,
         data: {
@@ -80,25 +209,21 @@ export default function ArchitecturePage() {
         },
       }));
 
-      // Map mock architecture edges to React Flow Edge structure
-      const flowEdges: Edge[] = data.edges.map((edge: any) => ({
+      const flowEdges: Edge[] = tempEdges.map((edge: any) => ({
         id: edge.id,
         source: edge.source,
         target: edge.target,
         label: edge.label,
         type: 'smoothstep',
         style: { stroke: 'var(--color-border)', strokeWidth: 1.5 },
-        animated: edge.source === 'node-client' || edge.source === 'node-gateway',
+        animated: true,
       }));
 
       setNodes(flowNodes);
       setEdges(flowEdges);
-      setLoading(false);
-    }).catch((err) => {
-      error('Failed to load architecture map', err instanceof Error ? err.message : String(err));
-      setLoading(false);
-    });
-  }, [id, error]);
+    }
+    setLoading(false);
+  }, [id]);
 
   const handleNodeClick = (_event: React.MouseEvent, flowNode: Node) => {
     const rawNode: ArchitectureNode = flowNode.data.raw;
