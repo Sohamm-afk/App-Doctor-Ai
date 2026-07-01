@@ -86,13 +86,14 @@ export async function mockGetPerformanceMetrics(projectId: string): Promise<Perf
     return (scanData.performance_findings ?? []).map((f: any, idx: number) => ({
       id: `perf-${idx}`,
       projectId,
-      title: f.title,
-      description: f.description,
-      scoreImpact: f.impact === 'High' ? 12 : f.impact === 'Medium' ? 6 : 3,
-      category: 'optimization',
-      filePath: f.file,
-      status: 'open',
-      createdAt: new Date().toISOString(),
+      name: f.title,
+      value: f.severity === 'high' ? 85 : f.severity === 'medium' ? 60 : 40,
+      unit: '%',
+      baseline: 30,
+      threshold: { warning: 50, critical: 80 },
+      trend: 'stable',
+      category: 'response-time',
+      recordedAt: new Date().toISOString(),
     }));
   }
   return [];
