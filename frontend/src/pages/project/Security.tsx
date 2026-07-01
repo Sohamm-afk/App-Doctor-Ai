@@ -109,7 +109,7 @@ export default function SecurityPage() {
           {Array.from({ length: 4 }, (_, i) => <SkeletonCard key={i} className="h-24" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState variant="no-security" />
+        <EmptyState variant="no-security" title="No issues detected." />
       ) : (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <DataTable<SecurityIssue>

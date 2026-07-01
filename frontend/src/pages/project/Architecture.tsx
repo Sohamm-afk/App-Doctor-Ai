@@ -44,14 +44,14 @@ export default function ArchitecturePage() {
     mockService.getArchitecture(id)
       .then((data) => {
         // Map mock architecture nodes to React Flow Node structure
-        const flowNodes: Node[] = data.nodes.map((node) => ({
+        const flowNodes: Node[] = data.nodes.map((node: any) => ({
         id: node.id,
         position: node.position,
         data: {
           label: (
             <div className="flex flex-col items-center text-center p-1.5 min-w-[120px]">
               <div className="flex items-center gap-1 mb-1">
-                {nodeTypeIcons[node.type] || <Network size={14} />}
+                {nodeTypeIcons[node.type as any] || <Network size={14} />}
                 <span className="text-caption font-bold">{node.label}</span>
               </div>
               {node.data.technology && (
@@ -81,7 +81,7 @@ export default function ArchitecturePage() {
       }));
 
       // Map mock architecture edges to React Flow Edge structure
-      const flowEdges: Edge[] = data.edges.map((edge) => ({
+      const flowEdges: Edge[] = data.edges.map((edge: any) => ({
         id: edge.id,
         source: edge.source,
         target: edge.target,

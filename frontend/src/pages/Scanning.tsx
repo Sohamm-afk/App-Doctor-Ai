@@ -79,26 +79,29 @@ export default function ScanningPage() {
         setApiLoading(false);
 
         // Map backend analysis to frontend Project schema
-        const projId = data.repository_name || 'proj-' + Math.random().toString(36).substr(2, 9);
+        const projId = data.metadata?.repository_name || 'proj-' + Math.random().toString(36).substr(2, 9);
         setScannedProjectId(projId);
+
+        // Save complete scan response in localStorage for mockService adapter!
+        localStorage.setItem(`scan_result_${projId}`, JSON.stringify(data));
 
         // Safely push to mock projects database
         if (!MOCK_PROJECTS.some((p) => p.id === projId)) {
           MOCK_PROJECTS.push({
             id: projId,
-            name: data.project_name || 'Unnamed Repository',
-            description: `Analysis details for ${data.repository_name || 'project'}. Detected type: ${data.project_type || 'Unknown'}. Size: ${data.repository_size || 'Small'}.`,
+            name: data.metadata?.project_name || 'Unnamed Repository',
+            description: `Analysis details for ${data.metadata?.repository_name || 'project'}. Detected type: ${data.metadata?.project_type || 'Unknown'}. Size: ${data.metadata?.repository_size || 'Small'}.`,
             repositoryUrl: github_url || '',
-            language: (((data.languages || [])[0] || 'unknown').toLowerCase() as any),
-            framework: data.frontend || data.backend || 'Other',
+            language: (((data.metadata?.languages || [])[0] || 'unknown').toLowerCase() as any),
+            framework: data.metadata?.frontend || data.metadata?.backend || 'Other',
             status: 'active',
-            launchScore: 74,
+            launchScore: data.launch_score?.overall || 74,
             lastScannedAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             cloudProvider: 'other',
             teamSize: 1,
-            tags: data.languages || [],
+            tags: data.metadata?.languages || [],
           });
         }
 

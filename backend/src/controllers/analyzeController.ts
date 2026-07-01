@@ -3,6 +3,7 @@ import { GitService } from '../services/gitService';
 import { ScannerService } from '../services/scannerService';
 import { DetectionService } from '../services/detectionService';
 import { MetadataService } from '../services/metadataService';
+import { AnalysisService } from '../services/analysisService';
 import { deleteDirectory } from '../utils/fileSystem';
 
 export class AnalyzeController {
@@ -29,12 +30,19 @@ export class AnalyzeController {
       // 4. Generate Repository Metadata
       const metadata = MetadataService.generateMetadata(clonedRepoInfo.repoName, scanResult, techInfo);
 
-      // 5. Cleanup Cloned Folder
+      // 5. Run Static Code Heuristics Scanners
+      const analysisResult = await AnalysisService.analyze(clonedRepoInfo.localPath, scanResult, techInfo);
+
+      // 6. Cleanup Cloned Folder
       await deleteDirectory(clonedRepoInfo.localPath);
       clonedRepoInfo = null;
 
-      // 6. Return Structured Metadata
-      res.status(200).json(metadata);
+      // 7. Return Comprehensive Extended Metadata Findings
+      res.status(200).json({
+        metadata,
+        technology: techInfo,
+        ...analysisResult
+      });
     } catch (err: any) {
       // Assure disk cleanups execute even upon failures
       if (clonedRepoInfo && clonedRepoInfo.localPath) {

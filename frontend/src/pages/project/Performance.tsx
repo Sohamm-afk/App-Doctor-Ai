@@ -215,12 +215,18 @@ export default function PerformancePage() {
       {/* Details Table */}
       <motion.div custom={5} variants={fadeUp} initial="hidden" animate="visible" className="space-y-4">
         <h3 className="text-h4 font-semibold text-text">Performance Indicators</h3>
-        <DataTable
-          columns={columns}
-          data={metrics}
-          loading={loading}
-          getRowKey={(m) => m.id}
-        />
+        {metrics.length === 0 ? (
+          <div className="card p-6 text-center text-body-sm text-text-muted italic">
+            No issues detected.
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={metrics}
+            loading={loading}
+            getRowKey={(m) => m.id}
+          />
+        )}
       </motion.div>
     </div>
   );
