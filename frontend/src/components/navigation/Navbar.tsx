@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { CommandPalette, SearchBar } from '@/components/common/CommandPalette';
 import { MOCK_PROJECTS } from '@/mocks/projects';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 
 // ─── Logo ─────────────────────────────────────────────────────────
 
@@ -193,6 +194,9 @@ export function Navbar({ onMobileMenuToggle }: NavbarProps) {
 
         {/* Notifications */}
         <NotificationButton />
+
+        {/* Theme Toggle */}
+        <ThemeToggle />
 
         {/* Settings */}
         <Link

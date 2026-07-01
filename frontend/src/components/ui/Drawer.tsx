@@ -84,7 +84,7 @@ export function Drawer({
           {/* Panel */}
           <motion.div
             className={cn(
-              'absolute top-0 bottom-0 w-full bg-white shadow-dialog flex flex-col',
+              'absolute top-0 bottom-0 w-full bg-bg-card shadow-dialog flex flex-col',
               side === 'left' ? 'left-0' : 'right-0',
               sizeMap[size],
               className,

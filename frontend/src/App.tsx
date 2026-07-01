@@ -1,5 +1,6 @@
 import { AppRouter }    from '@/routes';
 import { ToastProvider } from '@/components/ui/Toast';
+import { ThemeProvider } from '@/hooks/useTheme';
 
 /**
  * Application root.
@@ -7,8 +8,10 @@ import { ToastProvider } from '@/components/ui/Toast';
  */
 export default function App() {
   return (
-    <ToastProvider>
-      <AppRouter />
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <AppRouter />
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

@@ -38,7 +38,7 @@ function ToastItem({ toast, onDismiss }: { toast: ToastMessage; onDismiss: (id: 
       transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
       className={cn(
         'relative flex items-start gap-3 p-4 pr-10',
-        'bg-white rounded-xl shadow-dropdown border border-border',
+        'bg-bg-card rounded-xl shadow-dropdown border border-border',
         'border-l-4',
         borderColors[toast.type],
         'min-w-[300px] max-w-[420px]',

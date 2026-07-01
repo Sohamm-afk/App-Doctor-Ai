@@ -134,7 +134,7 @@ export function DataTable<T extends Record<string, any>>({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.15) }}
                     className={cn(
-                      'border-b border-border last:border-0 bg-white',
+                      'border-b border-border last:border-0 bg-bg-card',
                       'transition-colors duration-100',
                       onRowClick && 'cursor-pointer hover:bg-bg-subtle',
                     )}

@@ -66,7 +66,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
         className={cn(
           'fixed left-0 top-[60px] bottom-0 z-sidebar',
-          'bg-white border-r border-border flex flex-col',
+          'bg-bg-card border-r border-border flex flex-col',
           'overflow-hidden transition-shadow',
           // Mobile: full slide
           'max-lg:translate-x-0',

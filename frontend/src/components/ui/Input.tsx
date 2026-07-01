@@ -14,7 +14,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const inputBase =
-  'w-full rounded-input border bg-white text-text text-body-sm placeholder:text-text-subtle ' +
+  'w-full rounded-input border bg-bg-card text-text text-body-sm placeholder:text-text-subtle ' +
   'px-3 py-2.5 transition-all duration-150 outline-none ' +
   'focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 focus:border-primary-400 ' +
   'disabled:bg-bg-muted disabled:cursor-not-allowed disabled:opacity-60 ' +
@@ -335,7 +335,7 @@ export function MultiSelect({
       {isOpen && (
         <>
           <div className="fixed inset-0 z-dropdown" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 w-full bg-white border border-border rounded-xl shadow-dropdown z-dropdown max-h-60 overflow-y-auto p-1.5">
+          <div className="absolute top-full left-0 mt-1 w-full bg-bg-card border border-border rounded-xl shadow-dropdown z-dropdown max-h-60 overflow-y-auto p-1.5">
             {options.map((opt) => {
               const isSelected = selectedValues.includes(opt.value);
               return (

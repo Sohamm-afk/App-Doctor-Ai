@@ -33,7 +33,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         'max-w-[85%] text-caption leading-relaxed rounded-xl px-3 py-2',
         isUser
           ? 'bg-primary-500 text-white rounded-tr-sm'
-          : 'bg-white border border-border text-text rounded-tl-sm',
+          : 'bg-bg-card border border-border text-text rounded-tl-sm',
       )}>
         {msg.content}
       </div>
@@ -92,7 +92,7 @@ export function CTOConsole() {
 
   return (
     <motion.div
-      className="fixed bottom-0 left-0 right-0 z-[45] bg-white border-t border-border shadow-lg"
+      className="fixed bottom-0 left-0 right-0 z-[45] bg-bg-card border-t border-border shadow-lg"
       animate={{ height: expanded ? CONSOLE_EXPANDED_HEIGHT : CONSOLE_COLLAPSED_HEIGHT }}
       transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
       style={{ marginLeft: 0 }}
@@ -155,7 +155,7 @@ export function CTOConsole() {
                   <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
                     <Bot size={12} className="text-primary-600" />
                   </div>
-                  <div className="bg-white border border-border rounded-xl rounded-tl-sm px-3 py-2">
+                  <div className="bg-bg-card border border-border rounded-xl rounded-tl-sm px-3 py-2">
                     <div className="flex gap-1">
                       {[0, 0.2, 0.4].map((delay, i) => (
                         <motion.div

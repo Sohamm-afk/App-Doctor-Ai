@@ -88,7 +88,7 @@ export function Modal({
           {/* Panel */}
           <motion.div
             className={cn(
-              'relative w-full bg-white rounded-dialog shadow-dialog z-10',
+              'relative w-full bg-bg-card rounded-dialog shadow-dialog z-10',
               'flex flex-col max-h-[90vh]',
               sizeClasses[size],
               className,

@@ -1,5 +1,6 @@
 import { Outlet, Link } from 'react-router-dom';
 import { Zap } from 'lucide-react';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 
 // ─── Public Layout ────────────────────────────────────────────────
 // Used for landing, login, register pages — no sidebar or console
@@ -17,6 +18,8 @@ export function PublicLayout() {
             AppDoctor <span className="text-primary-500">AI</span>
           </span>
         </Link>
+        <div className="flex-1" />
+        <ThemeToggle />
       </header>
 
       {/* Page content */}

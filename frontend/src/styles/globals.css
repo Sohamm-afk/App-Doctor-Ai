@@ -18,6 +18,50 @@
   --color-text-subtle:      #9CA3AF;
   --color-border:           #E5E7EB;
   --color-border-light:     #F3F4F6;
+  --color-border-strong:    #D1D5DB;
+
+  /* Primary Scale */
+  --color-primary-50:       #ECFDF5;
+  --color-primary-100:      #D1FAE5;
+  --color-primary-200:      #A7F3D0;
+  --color-primary-300:      #6EE7B7;
+  --color-primary-400:      #34D399;
+  --color-primary-500:      #10B981;
+  --color-primary-600:      #059669;
+  --color-primary-700:      #047857;
+  --color-primary-800:      #065F46;
+  --color-primary-900:      #064E3B;
+  --color-primary-950:      #022C22;
+
+  /* Secondary Scale */
+  --color-secondary-50:     #F8FAFC;
+  --color-secondary-100:    #F1F5F9;
+  --color-secondary-200:    #E2E8F0;
+  --color-secondary-300:    #CBD5E1;
+  --color-secondary-400:    #94A3B8;
+  --color-secondary-500:    #64748B;
+  --color-secondary-600:    #475569;
+  --color-secondary-700:    #334155;
+  --color-secondary-800:    #1E293B;
+  --color-secondary-900:    #0F172A;
+  --color-secondary-950:    #020617;
+
+  /* Semantics */
+  --color-success:          #10B981;
+  --color-success-light:    #D1FAE5;
+  --color-success-dark:     #065F46;
+
+  --color-warning:          #F59E0B;
+  --color-warning-light:    #FEF3C7;
+  --color-warning-dark:     #92400E;
+
+  --color-danger:           #EF4444;
+  --color-danger-light:     #FEE2E2;
+  --color-danger-dark:      #7F1D1D;
+
+  --color-info:             #3B82F6;
+  --color-info-light:       #DBEAFE;
+  --color-info-dark:        #1E3A5F;
 
   /* Spacing */
   --space-1: 4px;
@@ -47,6 +91,67 @@
   --sidebar-collapsed-width: 64px;
   --cto-console-height: 320px;
   --content-max-width: 1280px;
+}
+
+.dark {
+  /* Colors */
+  --color-primary:          #10B981;
+  --color-primary-light:    #064E3B;
+  --color-primary-dark:     #D1FAE5;
+  --color-secondary:        #94A3B8;
+  --color-bg:               #0A0F1D; /* Deep dark blue-gray */
+  --color-bg-card:          #111827; /* Tailwind gray-900 */
+  --color-bg-subtle:        #1F2937; /* Tailwind gray-800 */
+  --color-bg-muted:         #374151; /* Tailwind gray-700 */
+  --color-text:             #F9FAFB; /* Tailwind gray-50 */
+  --color-text-muted:       #9CA3AF; /* Tailwind gray-400 */
+  --color-text-subtle:      #6B7280; /* Tailwind gray-500 */
+  --color-border:           #1F2937; /* Tailwind gray-800 */
+  --color-border-light:     #2D3748; /* Slightly lighter gray */
+  --color-border-strong:    #4B5563; /* Tailwind gray-600 */
+
+  /* Primary Scale - shifted for dark mode */
+  --color-primary-50:       #022C22;
+  --color-primary-100:      #064E3B;
+  --color-primary-200:      #065F46;
+  --color-primary-300:      #047857;
+  --color-primary-400:      #059669;
+  --color-primary-500:      #10B981;
+  --color-primary-600:      #34D399;
+  --color-primary-700:      #6EE7B7;
+  --color-primary-800:      #A7F3D0;
+  --color-primary-900:      #D1FAE5;
+  --color-primary-950:      #ECFDF5;
+
+  /* Secondary Scale - inverted for dark mode */
+  --color-secondary-50:     #0F172A;
+  --color-secondary-100:    #1E293B;
+  --color-secondary-200:    #334155;
+  --color-secondary-300:    #475569;
+  --color-secondary-400:    #64748B;
+  --color-secondary-500:    #94A3B8;
+  --color-secondary-600:    #CBD5E1;
+  --color-secondary-700:    #E2E8F0;
+  --color-secondary-800:    #F1F5F9;
+  --color-secondary-900:    #F8FAFC;
+  --color-secondary-950:    #FFFFFF;
+
+  /* Semantics - shifted for dark mode */
+  --color-success:          #10B981;
+  --color-success-light:    #064E3B;
+  --color-success-dark:     #D1FAE5;
+
+  --color-warning:          #F59E0B;
+  --color-warning-light:    #78350F;
+  --color-warning-dark:     #FEF3C7;
+
+  --color-danger:           #EF4444;
+  --color-danger-light:     #7F1D1D;
+  --color-danger-dark:      #FEE2E2;
+
+  --color-info:             #3B82F6;
+  --color-info-light:       #1E3A5F;
+  --color-info-dark:        #DBEAFE;
 }
 
 /* ─── Base Reset ─────────────────────────────────────────────────── */
@@ -114,7 +219,7 @@
 @layer components {
   /* Card base */
   .card {
-    @apply bg-white rounded-xl border border-border shadow-card transition-all duration-200;
+    @apply bg-bg-card rounded-xl border border-border shadow-card transition-all duration-200;
   }
   .card-hover {
     @apply hover:shadow-card-hover hover:-translate-y-0.5;
@@ -179,6 +284,14 @@
     backdrop-filter: blur(12px) saturate(150%);
     -webkit-backdrop-filter: blur(12px) saturate(150%);
     background-color: rgba(250, 250, 250, 0.85);
+  }
+  .dark .glass-nav {
+    background-color: rgba(17, 24, 39, 0.85);
+  }
+
+  /* Global white background override for dark mode */
+  .dark .bg-white {
+    background-color: var(--color-bg-card) !important;
   }
 
   /* Sidebar item */

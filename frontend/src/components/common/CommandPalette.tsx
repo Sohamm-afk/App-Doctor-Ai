@@ -123,7 +123,7 @@ export function CommandPalette({ open, onClose, projectId = 'proj-001' }: Comman
           />
           {/* Panel */}
           <motion.div
-            className="relative w-full max-w-lg bg-white rounded-2xl shadow-dialog overflow-hidden border border-border"
+            className="relative w-full max-w-lg bg-bg-card rounded-2xl shadow-dialog overflow-hidden border border-border"
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1,    y: 0   }}
             exit={{    opacity: 0, scale: 0.95, y: -10 }}
@@ -219,7 +219,7 @@ export function SearchBar({ value, onChange, placeholder = 'Search…', onCmdK, 
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          'w-full pl-9 pr-20 py-2 rounded-input border border-border bg-white',
+          'w-full pl-9 pr-20 py-2 rounded-input border border-border bg-bg-card',
           'text-body-sm text-text placeholder:text-text-subtle',
           'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-400',
           'transition-all duration-150',

@@ -32,7 +32,7 @@ interface CustomTooltipProps {
 function CustomTooltip({ active, payload, label, formatter }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-border rounded-xl p-3 shadow-dropdown text-body-sm">
+    <div className="bg-bg-card border border-border rounded-xl p-3 shadow-dropdown text-body-sm">
       {label && <p className="font-semibold text-text mb-1.5">{label}</p>}
       {payload.map((entry) => (
         <div key={entry.name} className="flex items-center gap-2">
