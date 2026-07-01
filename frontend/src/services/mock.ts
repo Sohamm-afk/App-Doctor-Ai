@@ -9,6 +9,7 @@ import type {
   CloudEstimate, Report, ChatMessage, ChatSession,
 } from '@/types';
 import { generateId } from '@/utils';
+import axios from 'axios';
 
 /** Simulate a network delay. */
 const delay = (ms = 400) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -137,10 +138,13 @@ export async function mockGetCloudEstimate(projectId: string): Promise<CloudEsti
 
 export async function mockGetReports(projectId: string): Promise<Report[]> {
   await delay(300);
+  const listStr = localStorage.getItem(`reports_list_${projectId}`);
+  if (listStr) {
+    return JSON.parse(listStr);
+  }
   const localScanData = localStorage.getItem(`scan_result_${projectId}`);
   if (localScanData) {
-    const scanData = JSON.parse(localScanData);
-    return [
+    const defaultReports: Report[] = [
       {
         id: 'rep-1',
         projectId,
@@ -149,19 +153,11 @@ export async function mockGetReports(projectId: string): Promise<Report[]> {
         status: 'ready',
         format: 'pdf',
         size: 1024 * 124,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'rep-2',
-        projectId,
-        title: 'Security Vulnerability Index',
-        type: 'security',
-        status: 'ready',
-        format: 'pdf',
-        size: 1024 * 64,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
       }
     ];
+    localStorage.setItem(`reports_list_${projectId}`, JSON.stringify(defaultReports));
+    return defaultReports;
   }
   return [];
 }
@@ -170,6 +166,54 @@ export async function mockGetReports(projectId: string): Promise<Report[]> {
 
 export async function mockGetChatSession(projectId: string): Promise<ChatSession> {
   await delay(200);
+  const review = localStorage.getItem(`aicto_review_${projectId}`);
+  if (review) {
+    return {
+      id: `chat-${projectId}`,
+      projectId,
+      title: 'AI CTO Conversation',
+      messages: [
+        {
+          id: 'welcome',
+          role: 'assistant',
+          content: review,
+          timestamp: new Date().toISOString()
+        }
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  const localScanData = localStorage.getItem(`scan_result_${projectId}`);
+  if (localScanData) {
+    const scanResult = JSON.parse(localScanData);
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+    try {
+      const { data } = await axios.post(`${apiBaseUrl}/api/ai/review`, { scanResult });
+      if (data.review) {
+        localStorage.setItem(`aicto_review_${projectId}`, data.review);
+        return {
+          id: `chat-${projectId}`,
+          projectId,
+          title: 'AI CTO Conversation',
+          messages: [
+            {
+              id: 'welcome',
+              role: 'assistant',
+              content: data.review,
+              timestamp: new Date().toISOString()
+            }
+          ],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      }
+    } catch (err) {
+      console.error('Failed to get review from Gemini backend:', err);
+    }
+  }
+
   return {
     id: `chat-${projectId}`,
     projectId,
@@ -178,7 +222,7 @@ export async function mockGetChatSession(projectId: string): Promise<ChatSession
       {
         id: 'welcome',
         role: 'assistant',
-        content: "Hello! I am your AI CTO. Ask me anything about your scanned repository architecture, security, or deployment configs.",
+        content: "Hello! I am your AI CTO. Strategic review is currently unavailable. Please verify your backend server or scan status.",
         timestamp: new Date().toISOString()
       }
     ],
@@ -187,12 +231,35 @@ export async function mockGetChatSession(projectId: string): Promise<ChatSession
   };
 }
 
-export async function mockSendChatMessage(_sessionId: string, content: string): Promise<ChatMessage> {
-  await delay(1200);
+export async function mockSendChatMessage(sessionId: string, content: string): Promise<ChatMessage> {
+  await delay(200);
+  const projectId = sessionId.replace('chat-', '');
+  const localScanData = localStorage.getItem(`scan_result_${projectId}`);
+  const scanResult = localScanData ? JSON.parse(localScanData) : null;
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+  try {
+    const { data } = await axios.post(`${apiBaseUrl}/api/ai/chat`, {
+      message: content,
+      history: [],
+      scanResult
+    });
+    if (data.reply) {
+      return {
+        id:        generateId('msg'),
+        role:      'assistant',
+        content:   data.reply,
+        timestamp: new Date().toISOString(),
+        isStreaming: false,
+      };
+    }
+  } catch (err) {
+    console.error('Failed to stream real AI response:', err);
+  }
+
   return {
     id:        generateId('msg'),
     role:      'assistant',
-    content:   `I've received your message: "${content}". This is a mock response. When connected to the backend, this will stream a real AI response.`,
+    content:   `Connection issue. Failed to reach the Gemini AI CTO server. Please confirm the GEMINI_API_KEY environment variable.`,
     timestamp: new Date().toISOString(),
     isStreaming: false,
   };

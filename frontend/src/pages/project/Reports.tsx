@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { formatBytes, formatRelativeTime } from '@/utils';
 import type { Report, TableColumn } from '@/types';
+import axios from 'axios';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -36,24 +37,65 @@ export default function ReportsPage() {
   }, [id, error]);
 
   const handleGenerate = () => {
+    if (!id) return;
     setGenerating(true);
     info('Generating Report', 'Creating the executive summary audit report...');
     setTimeout(() => {
       const newReport: Report = {
         id: crypto.randomUUID(),
-        projectId: id ?? 'proj-001',
+        projectId: id,
         title: `Full Audit Report — Generated ${new Date().toLocaleDateString()}`,
         type: 'full-audit',
         status: 'ready',
         format: 'pdf',
-        size: 1850000,
+        size: 1024 * 180,
         createdAt: new Date().toISOString(),
         downloadUrl: '#',
       };
-      setReports((prev) => [newReport, ...prev]);
+      
+      const updated = [newReport, ...reports];
+      setReports(updated);
+      localStorage.setItem(`reports_list_${id}`, JSON.stringify(updated));
       setGenerating(false);
       success('Report Ready', 'New stakeholder PDF has been successfully generated');
     }, 2000);
+  };
+
+  const handleDownload = async (report: Report) => {
+    if (!id) return;
+    info('Download Started', `Compiling and downloading ${report.title}...`);
+    try {
+      const localScanData = localStorage.getItem(`scan_result_${id}`);
+      const scanResult = localScanData ? JSON.parse(localScanData) : null;
+      if (!scanResult) {
+        error('Download Failed', 'Scanned repository data is missing. Please run a scan first.');
+        return;
+      }
+      
+      const review = localStorage.getItem(`aicto_review_${id}`) || '';
+      const localFixes = localStorage.getItem(`one_click_fixes_${id}`);
+      const fixes = localFixes ? JSON.parse(localFixes) : [];
+
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+      
+      const response = await axios.post(`${apiBaseUrl}/api/ai/report/pdf`, {
+        scanResult,
+        review,
+        fixes
+      }, {
+        responseType: 'blob'
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `appdoctor_report_${id}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      link.click();
+      success('Download Successful', `Saved ${report.title} locally.`);
+    } catch (err: any) {
+      error('Download Failed', 'Could not compile and download the PDF report.');
+      console.error(err);
+    }
   };
 
   const columns: TableColumn<Report>[] = [
@@ -110,13 +152,25 @@ export default function ReportsPage() {
           size="xs"
           leftIcon={<Download size={12} />}
           disabled={row.status === 'generating'}
-          onClick={() => success('Download Started', `Downloading ${row.title}`)}
+          onClick={() => handleDownload(row)}
         >
           Download
         </Button>
       ),
     },
   ];
+
+  const localScanData = id ? localStorage.getItem(`scan_result_${id}`) : null;
+  if (!localScanData && !loading) {
+    return (
+      <div className="card p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+        <h2 className="text-h2 font-heading text-text mb-2 font-bold">No analysis available.</h2>
+        <p className="text-body-sm text-text-muted max-w-sm">
+          Please onboard and run a scan on this repository to view stakeholder reports.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>

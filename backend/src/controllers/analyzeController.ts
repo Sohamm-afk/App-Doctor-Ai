@@ -41,6 +41,7 @@ export class AnalyzeController {
       res.status(200).json({
         metadata,
         technology: techInfo,
+        raw_stats: scanResult,
         ...analysisResult
       });
     } catch (err: any) {

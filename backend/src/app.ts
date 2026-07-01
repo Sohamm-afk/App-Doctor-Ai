@@ -4,6 +4,7 @@ import { requestLogger } from './middlewares/logger';
 import { errorHandler } from './middlewares/errorHandler';
 import { healthRoutes } from './routes/healthRoutes';
 import { analyzeRoutes } from './routes/analyzeRoutes';
+import { aiRoutes } from './routes/aiRoutes';
 import { config } from './config';
 
 const app = express();
@@ -16,6 +17,7 @@ app.use(requestLogger);
 // Application Routing
 app.use('/health', healthRoutes);
 app.use('/api/analyze', analyzeRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Fallback 404 Routing
 app.use((req, res) => {
