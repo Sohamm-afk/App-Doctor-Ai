@@ -113,7 +113,7 @@ export default function ScanningPage() {
             </p>
           </div>
 
-          <div className="card p-6 bg-white border border-border space-y-3">
+          <div className="card p-6 bg-bg-card border border-border space-y-3">
             {stages.map((stage, idx) => {
               const isPending = stage.status === 'pending';
               const isRunning = stage.status === 'running';

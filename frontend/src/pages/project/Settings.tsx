@@ -10,7 +10,7 @@ import type { Project } from '@/types';
 
 export default function SettingsPage() {
   const { id } = useParams<{ id: string }>();
-  const { success } = useToast();
+  const { success, error } = useToast();
   const [project, setProject] = useState<Project | undefined>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,18 +25,23 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!id) return;
-    mockService.getProject(id).then((data) => {
-      if (data) {
-        setProject(data);
-        setName(data.name);
-        setDescription(data.description);
-        setRepoUrl(data.repositoryUrl);
-        setProvider(data.cloudProvider || 'aws');
-        setTeamSize(data.teamSize || 3);
-      }
-      setLoading(false);
-    });
-  }, [id]);
+    mockService.getProject(id)
+      .then((data) => {
+        if (data) {
+          setProject(data);
+          setName(data.name);
+          setDescription(data.description);
+          setRepoUrl(data.repositoryUrl);
+          setProvider(data.cloudProvider || 'aws');
+          setTeamSize(data.teamSize || 3);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        error('Failed to load settings', err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
+  }, [id, error]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

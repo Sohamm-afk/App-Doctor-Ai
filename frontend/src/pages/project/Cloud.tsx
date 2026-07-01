@@ -6,6 +6,7 @@ import { CloudCostCard, AIRecommendationCard } from '@/components/cards/Cards';
 import { AppPieChart, CHART_COLOR_LIST } from '@/components/charts/Charts';
 import { DataTable } from '@/components/common/Table';
 import { mockService } from '@/services/mock';
+import { useToast } from '@/components/ui/Toast';
 import type { CloudEstimate, CloudCostBreakdown, TableColumn } from '@/types';
 
 const fadeUp = {
@@ -17,14 +18,20 @@ export default function CloudPage() {
   const { id } = useParams<{ id: string }>();
   const [estimate, setEstimate] = useState<CloudEstimate | undefined>();
   const [loading, setLoading] = useState(true);
+  const { error } = useToast();
 
   useEffect(() => {
     if (!id) return;
-    mockService.getCloudEstimate(id).then((data) => {
-      setEstimate(data);
-      setLoading(false);
-    });
-  }, [id]);
+    mockService.getCloudEstimate(id)
+      .then((data) => {
+        setEstimate(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        error('Failed to load cloud estimate', err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
+  }, [id, error]);
 
   const pieData = estimate
     ? estimate.breakdown.map((item, i) => ({

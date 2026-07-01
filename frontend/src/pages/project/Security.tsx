@@ -9,6 +9,7 @@ import { SeverityBadge, Badge } from '@/components/ui/Badge';
 import { SkeletonCard } from '@/components/ui/Loading';
 import { mockService } from '@/services/mock';
 import { formatRelativeTime } from '@/utils';
+import { useToast } from '@/components/ui/Toast';
 import type { SecurityIssue, Severity } from '@/types';
 import type { TableColumn } from '@/types';
 
@@ -19,14 +20,20 @@ export default function SecurityPage() {
   const [issues, setIssues] = useState<SecurityIssue[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Severity | 'all'>('all');
+  const { error } = useToast();
 
   useEffect(() => {
     if (!id) return;
-    mockService.getSecurityIssues(id).then((data) => {
-      setIssues(data);
-      setLoading(false);
-    });
-  }, [id]);
+    mockService.getSecurityIssues(id)
+      .then((data) => {
+        setIssues(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        error('Failed to load security issues', err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
+  }, [id, error]);
 
   const filtered = filter === 'all'
     ? issues
@@ -87,7 +94,7 @@ export default function SecurityPage() {
             className={`px-3 py-1.5 rounded-full text-caption font-medium border transition-all ${
               filter === sev
                 ? 'bg-primary-50 border-primary-200 text-primary-700'
-                : 'bg-white border-border text-text-muted hover:border-secondary-300'
+                : 'bg-bg-card border-border text-text-muted hover:border-secondary-300'
             }`}
           >
             {sev === 'all' ? 'All' : sev.charAt(0).toUpperCase() + sev.slice(1)}

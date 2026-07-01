@@ -102,7 +102,7 @@ export default function UploadPage() {
                   className={cn(
                     'flex-1 py-2 rounded-lg text-body-sm font-medium transition-all',
                     activeTab === tab
-                      ? 'bg-white text-text shadow-sm border border-border'
+                      ? 'bg-bg-card text-text shadow-sm border border-border'
                       : 'text-text-muted hover:text-text'
                   )}
                 >
@@ -134,7 +134,7 @@ export default function UploadPage() {
                           setUrl(repo.url);
                           setUrlValid(true);
                         }}
-                        className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-white text-left hover:border-primary-400 hover:bg-primary-50/20 transition-all text-body-sm group"
+                        className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-bg-card text-left hover:border-primary-400 hover:bg-primary-50/20 transition-all text-body-sm group"
                       >
                         <span className="font-medium text-text group-hover:text-primary-600 truncate">{repo.name}</span>
                         <span className="text-[10px] font-mono bg-bg-subtle px-1.5 py-0.5 rounded text-text-muted">{repo.lang}</span>
@@ -153,7 +153,7 @@ export default function UploadPage() {
                   'border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer relative group overflow-hidden',
                   isDragging
                     ? 'border-primary-500 bg-primary-50/50 scale-[1.01]'
-                    : 'border-border bg-white hover:border-primary-300'
+                    : 'border-border bg-bg-card hover:border-primary-300'
                 )}
               >
                 <input

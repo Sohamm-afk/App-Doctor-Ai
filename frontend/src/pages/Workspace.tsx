@@ -9,6 +9,7 @@ import { Skeleton, SkeletonCard } from '@/components/ui/Loading';
 import { SearchBar } from '@/components/common/CommandPalette';
 import { mockService } from '@/services/mock';
 import { ROUTES } from '@/constants';
+import { useToast } from '@/components/ui/Toast';
 import type { Project } from '@/types';
 
 const fadeUp = {
@@ -20,13 +21,19 @@ export default function WorkspacePage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const { error } = useToast();
 
   useEffect(() => {
-    mockService.getProjects().then((data) => {
-      setProjects(data);
-      setLoading(false);
-    });
-  }, []);
+    mockService.getProjects()
+      .then((data) => {
+        setProjects(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        error('Failed to load projects', err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
+  }, [error]);
 
   const filtered = projects.filter((p) =>
     search

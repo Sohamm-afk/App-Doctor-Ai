@@ -93,7 +93,7 @@ export function AppLineChart({ data, xKey, lines, className, height = 220, loadi
   return (
     <ChartContainer loading={loading} height={height} className={className}>
       <ReLineChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
         <Tooltip content={<CustomTooltip formatter={formatter} />} />
@@ -137,7 +137,7 @@ export function AppAreaChart({ data, xKey, areas, className, height = 220, loadi
             );
           })}
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
         <Tooltip content={<CustomTooltip formatter={formatter} />} />
@@ -177,7 +177,7 @@ export function AppBarChart({ data, xKey, bars, className, height = 220, loading
         layout={horizontal ? 'vertical' : 'horizontal'}
         margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={!horizontal} horizontal={horizontal} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={!horizontal} horizontal={horizontal} />
         {horizontal ? (
           <>
             <XAxis type="number" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
@@ -189,7 +189,7 @@ export function AppBarChart({ data, xKey, bars, className, height = 220, loading
             <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
           </>
         )}
-        <Tooltip content={<CustomTooltip formatter={formatter} />} cursor={{ fill: '#F1F5F9' }} />
+        <Tooltip content={<CustomTooltip formatter={formatter} />} cursor={{ fill: 'var(--color-bg-subtle)' }} />
         {bars.map((bar, i) => (
           <Bar
             key={bar.key}
@@ -253,8 +253,8 @@ export function AppRadarChart({ data, className, height = 220, loading, color = 
   return (
     <ChartContainer loading={loading} height={height} className={className}>
       <ReRadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
-        <PolarGrid stroke="#E5E7EB" />
-        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: '#6B7280' }} />
+        <PolarGrid stroke="var(--color-border)" />
+        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
         <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
         <Radar name="Score" dataKey="value" stroke={color} fill={color} fillOpacity={0.15} strokeWidth={2} />
         <Tooltip content={<CustomTooltip />} />

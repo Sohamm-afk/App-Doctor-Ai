@@ -92,7 +92,7 @@ export default function LoginPage() {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center">
-              <span className="px-3 bg-white text-caption text-text-muted">or continue with</span>
+              <span className="px-3 bg-bg-card text-caption text-text-muted">or continue with</span>
             </div>
           </div>
 
@@ -102,7 +102,7 @@ export default function LoginPage() {
               <button
                 key={provider}
                 type="button"
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-btn border border-border bg-white text-body-sm font-medium text-text hover:bg-bg-subtle transition-colors"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-btn border border-border bg-bg-card text-body-sm font-medium text-text hover:bg-bg-subtle transition-colors"
               >
                 {provider}
               </button>

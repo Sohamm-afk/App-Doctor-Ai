@@ -9,6 +9,7 @@ import { mockService } from '@/services/mock';
 import { Drawer } from '@/components/ui/Drawer';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/components/ui/Toast';
 import type { ArchitectureNode } from '@/types';
 
 const nodeTypeIcons: Record<string, React.ReactNode> = {
@@ -36,12 +37,14 @@ export default function ArchitecturePage() {
   const [loading, setLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState<ArchitectureNode | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { error } = useToast();
 
   useEffect(() => {
     if (!id) return;
-    mockService.getArchitecture(id).then((data) => {
-      // Map mock architecture nodes to React Flow Node structure
-      const flowNodes: Node[] = data.nodes.map((node) => ({
+    mockService.getArchitecture(id)
+      .then((data) => {
+        // Map mock architecture nodes to React Flow Node structure
+        const flowNodes: Node[] = data.nodes.map((node) => ({
         id: node.id,
         position: node.position,
         data: {
@@ -68,11 +71,11 @@ export default function ArchitecturePage() {
           raw: node,
         },
         style: {
-          background: '#fff',
-          border: '1px solid #E5E7EB',
+          background: 'var(--color-bg-card)',
+          border: '1px solid var(--color-border)',
           borderRadius: '12px',
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
-          color: '#111827',
+          color: 'var(--color-text)',
           padding: '0px',
         },
       }));
@@ -84,15 +87,18 @@ export default function ArchitecturePage() {
         target: edge.target,
         label: edge.label,
         type: 'smoothstep',
-        style: { stroke: '#CBD5E1', strokeWidth: 1.5 },
+        style: { stroke: 'var(--color-border)', strokeWidth: 1.5 },
         animated: edge.source === 'node-client' || edge.source === 'node-gateway',
       }));
 
       setNodes(flowNodes);
       setEdges(flowEdges);
       setLoading(false);
+    }).catch((err) => {
+      error('Failed to load architecture map', err instanceof Error ? err.message : String(err));
+      setLoading(false);
     });
-  }, [id]);
+  }, [id, error]);
 
   const handleNodeClick = (_event: React.MouseEvent, flowNode: Node) => {
     const rawNode: ArchitectureNode = flowNode.data.raw;
@@ -116,7 +122,7 @@ export default function ArchitecturePage() {
       {/* React Flow Workspace */}
       <div className="flex-1 card overflow-hidden min-h-[450px] relative border border-border">
         {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-bg-card/50 backdrop-blur-sm z-10">
             <span className="text-body-sm text-text-muted">Loading architecture map…</span>
           </div>
         ) : (
@@ -127,7 +133,7 @@ export default function ArchitecturePage() {
             fitView
             attributionPosition="bottom-right"
           >
-            <Background color="#CBD5E1" gap={16} size={1} />
+            <Background color="var(--color-border)" gap={16} size={1} />
             <Controls showInteractive={false} />
           </ReactFlow>
         )}

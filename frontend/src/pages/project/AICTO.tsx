@@ -5,6 +5,7 @@ import { Bot, Send, Sparkles, User, Lightbulb, ShieldAlert, Cpu } from 'lucide-r
 import { mockService, MOCK_SUGGESTED_PROMPTS } from '@/services/mock';
 import { Button } from '@/components/ui/Button';
 import { InformationCard } from '@/components/cards/Cards';
+import { useToast } from '@/components/ui/Toast';
 import type { ChatMessage } from '@/types';
 
 const fadeUp = {
@@ -19,14 +20,20 @@ export default function AICTOPage() {
   const [loading, setLoading] = useState(true);
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { error } = useToast();
 
   useEffect(() => {
     if (!id) return;
-    mockService.getChatSession(id).then((session) => {
-      setMessages(session.messages);
-      setLoading(false);
-    });
-  }, [id]);
+    mockService.getChatSession(id)
+      .then((session) => {
+        setMessages(session.messages);
+        setLoading(false);
+      })
+      .catch((err) => {
+        error('Failed to load chat session', err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
+  }, [id, error]);
 
   useEffect(() => {
     if (bottomRef.current) {
@@ -54,6 +61,7 @@ export default function AICTOPage() {
       const response = await mockService.sendChatMessage('session-001', text);
       setMessages((prev) => [...prev, response]);
     } catch (e) {
+      error('Failed to send message', e instanceof Error ? e.message : String(e));
       console.error(e);
     } finally {
       setTyping(false);
@@ -100,7 +108,7 @@ export default function AICTOPage() {
                   <div className={`rounded-2xl p-4 text-body-sm leading-relaxed border ${
                     isUser
                       ? 'bg-primary-500 text-white border-primary-600 rounded-tr-sm shadow-sm'
-                      : 'bg-white text-text border-border rounded-tl-sm'
+                      : 'bg-bg-card text-text border-border rounded-tl-sm'
                   }`}>
                     {msg.content}
                   </div>
@@ -114,7 +122,7 @@ export default function AICTOPage() {
               <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center">
                 <Bot size={14} />
               </div>
-              <div className="rounded-2xl p-4 bg-white text-text border border-border rounded-tl-sm">
+              <div className="rounded-2xl p-4 bg-bg-card text-text border border-border rounded-tl-sm">
                 <div className="flex items-center gap-1.5">
                   {[0, 0.2, 0.4].map((delay, i) => (
                     <motion.span
@@ -138,7 +146,7 @@ export default function AICTOPage() {
             <button
               key={prompt}
               onClick={() => handleSend(prompt)}
-              className="flex-shrink-0 px-3 py-1 rounded-full border border-border bg-white text-caption text-text-muted hover:border-primary-300 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+              className="flex-shrink-0 px-3 py-1 rounded-full border border-border bg-bg-card text-caption text-text-muted hover:border-primary-300 hover:text-primary-600 hover:bg-primary-50 transition-colors"
             >
               {prompt}
             </button>
@@ -146,7 +154,7 @@ export default function AICTOPage() {
         </div>
 
         {/* Input area */}
-        <div className="p-4 border-t border-border bg-white flex gap-2">
+        <div className="p-4 border-t border-border bg-bg-card flex gap-2">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}

@@ -17,18 +17,23 @@ const fadeUp = {
 
 export default function ReportsPage() {
   const { id } = useParams<{ id: string }>();
-  const { success, info } = useToast();
+  const { success, info, error } = useToast();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    mockService.getReports(id).then((data) => {
-      setReports(data);
-      setLoading(false);
-    });
-  }, [id]);
+    mockService.getReports(id)
+      .then((data) => {
+        setReports(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        error('Failed to load reports', err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
+  }, [id, error]);
 
   const handleGenerate = () => {
     setGenerating(true);

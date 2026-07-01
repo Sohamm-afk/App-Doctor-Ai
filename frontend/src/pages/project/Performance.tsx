@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { mockService } from '@/services/mock';
 import { MOCK_RESPONSE_TIME_SERIES, MOCK_THROUGHPUT_SERIES, MOCK_ERROR_RATE_SERIES, MOCK_MEMORY_SERIES } from '@/mocks/performance';
 import { cn } from '@/utils';
+import { useToast } from '@/components/ui/Toast';
 import type { PerformanceMetric, TableColumn } from '@/types';
 
 const fadeUp = {
@@ -21,14 +22,20 @@ export default function PerformancePage() {
   const [metrics, setMetrics] = useState<PerformanceMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeChart, setActiveChart] = useState<'latency' | 'throughput' | 'error' | 'memory'>('latency');
+  const { error } = useToast();
 
   useEffect(() => {
     if (!id) return;
-    mockService.getPerformanceMetrics(id).then((data) => {
-      setMetrics(data);
-      setLoading(false);
-    });
-  }, [id]);
+    mockService.getPerformanceMetrics(id)
+      .then((data) => {
+        setMetrics(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        error('Failed to load performance metrics', err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
+  }, [id, error]);
 
   const mapTimeSeries = (series: typeof MOCK_RESPONSE_TIME_SERIES) => {
     return series.map((pt) => ({
@@ -187,7 +194,7 @@ export default function PerformancePage() {
                 onClick={() => setActiveChart(tab)}
                 className={cn(
                   'px-3 py-1 rounded-md text-caption font-medium transition-colors capitalize',
-                  activeChart === tab ? 'bg-white text-text shadow-sm' : 'text-text-muted hover:text-text'
+                  activeChart === tab ? 'bg-bg-card text-text shadow-sm' : 'text-text-muted hover:text-text'
                 )}
               >
                 {tab}

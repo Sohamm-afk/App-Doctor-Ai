@@ -9,6 +9,7 @@ import { ProgressBar } from '@/components/ui/Loading';
 import { mockService } from '@/services/mock';
 import { MOCK_RESPONSE_TIME_SERIES } from '@/mocks/performance';
 import { formatRelativeTime, formatCurrency, getLaunchRecommendation } from '@/utils';
+import { useToast } from '@/components/ui/Toast';
 import type { Project, SecurityIssue, PerformanceMetric, CloudEstimate, Severity } from '@/types';
 
 const fadeUp = {
@@ -23,6 +24,7 @@ export default function OverviewPage() {
   const [perf, setPerf]           = useState<PerformanceMetric[]>([]);
   const [cloud, setCloud]         = useState<CloudEstimate | undefined>();
   const [loading, setLoading]     = useState(true);
+  const { error } = useToast();
 
   useEffect(() => {
     if (!id) return;
@@ -37,8 +39,11 @@ export default function OverviewPage() {
       setPerf(perf_);
       setCloud(cld);
       setLoading(false);
+    }).catch((err) => {
+      error('Failed to load project details', err instanceof Error ? err.message : String(err));
+      setLoading(false);
     });
-  }, [id]);
+  }, [id, error]);
 
   if (!project && !loading) {
     return (
