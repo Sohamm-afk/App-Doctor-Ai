@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -9,7 +9,8 @@ import { cn } from '@/utils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { CommandPalette, SearchBar } from '@/components/common/CommandPalette';
-import { MOCK_PROJECTS } from '@/mocks/projects';
+import { mockService } from '@/services/mock';
+import type { Project } from '@/types';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 
 // ─── Logo ─────────────────────────────────────────────────────────
@@ -31,8 +32,14 @@ function AppLogo() {
 
 function ProjectSelector() {
   const { id } = useParams<{ id: string }>();
-  const project = MOCK_PROJECTS.find((p) => p.id === id);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    mockService.getProjects().then(setProjects);
+  }, [id, open]);
+
+  const project = projects.find((p) => p.id === id);
 
   return (
     <div className="relative">
@@ -55,7 +62,7 @@ function ProjectSelector() {
         <>
           <div className="fixed inset-0 z-dropdown" onClick={() => setOpen(false)} />
           <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-border rounded-xl shadow-dropdown z-dropdown py-1 overflow-hidden">
-            {MOCK_PROJECTS.map((p) => (
+            {projects.map((p) => (
               <Link
                 key={p.id}
                 to={`/workspace/project/${p.id}/overview`}
@@ -118,6 +125,13 @@ export function Navbar({ onMobileMenuToggle }: NavbarProps) {
   const [cmdOpen, setCmdOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { id: projectId } = useParams<{ id: string }>();
+  const [projects, setProjects] = useState<Project[]>([]);
+
+  useEffect(() => {
+    mockService.getProjects().then(setProjects);
+  }, [projectId]);
+
+  const project = projects.find((p) => p.id === projectId);
 
   return (
     <>
@@ -160,14 +174,14 @@ export function Navbar({ onMobileMenuToggle }: NavbarProps) {
         </div>
 
         {/* Launch score badge */}
-        {projectId && (
+        {projectId && project && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            <span className="text-caption font-semibold text-amber-700">Score: 74</span>
+            <span className="text-caption font-semibold text-amber-700">Score: {project.launchScore}</span>
           </motion.div>
         )}
 

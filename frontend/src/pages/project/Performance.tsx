@@ -7,7 +7,6 @@ import { AppAreaChart, CHART_COLORS } from '@/components/charts/Charts';
 import { DataTable } from '@/components/common/Table';
 import { Badge } from '@/components/ui/Badge';
 import { mockService } from '@/services/mock';
-import { MOCK_RESPONSE_TIME_SERIES, MOCK_THROUGHPUT_SERIES, MOCK_ERROR_RATE_SERIES, MOCK_MEMORY_SERIES } from '@/mocks/performance';
 import { cn } from '@/utils';
 import { useToast } from '@/components/ui/Toast';
 import type { PerformanceMetric, TableColumn } from '@/types';
@@ -37,7 +36,12 @@ export default function PerformancePage() {
       });
   }, [id, error]);
 
-  const mapTimeSeries = (series: typeof MOCK_RESPONSE_TIME_SERIES) => {
+  const MOCK_RESPONSE_TIME_SERIES: any[] = [];
+  const MOCK_THROUGHPUT_SERIES: any[] = [];
+  const MOCK_ERROR_RATE_SERIES: any[] = [];
+  const MOCK_MEMORY_SERIES: any[] = [];
+
+  const mapTimeSeries = (series: any[]) => {
     return series.map((pt) => ({
       date: new Date(pt.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       value: Number(pt.value.toFixed(1)),
@@ -134,25 +138,23 @@ export default function PerformancePage() {
           {
             key: 'latency',
             title: 'Response Time (p95)',
-            value: '420 ms',
+            value: '—',
             icon: <Clock size={16} />,
-            trend: 'up' as const,
-            trendPositive: false,
-            change: 12,
+            trend: 'stable' as const,
+            trendPositive: true,
           },
           {
             key: 'throughput',
             title: 'Throughput',
-            value: '1,240 req/s',
+            value: '—',
             icon: <Activity size={16} />,
-            trend: 'up' as const,
+            trend: 'stable' as const,
             trendPositive: true,
-            change: 8,
           },
           {
             key: 'error',
             title: 'Error Rate',
-            value: '0.8%',
+            value: '—',
             icon: <Zap size={16} />,
             trend: 'stable' as const,
             trendPositive: true,
@@ -160,11 +162,10 @@ export default function PerformancePage() {
           {
             key: 'memory',
             title: 'Memory Usage',
-            value: '68%',
+            value: '—',
             icon: <Server size={16} />,
-            trend: 'up' as const,
-            trendPositive: false,
-            change: 4,
+            trend: 'stable' as const,
+            trendPositive: true,
           },
         ].map((card, i) => (
           <motion.div key={card.key} custom={i} variants={fadeUp} initial="hidden" animate="visible">
@@ -174,7 +175,6 @@ export default function PerformancePage() {
               icon={card.icon}
               trend={card.trend}
               trendPositive={card.trendPositive}
-              change={card.change}
               onClick={() => setActiveChart(card.key as any)}
               className={cn(activeChart === card.key && 'ring-2 ring-primary-500 border-primary-500')}
               loading={loading}
@@ -202,14 +202,9 @@ export default function PerformancePage() {
             ))}
           </div>
         </div>
-        <AppAreaChart
-          data={chartData.data}
-          xKey="date"
-          areas={[{ key: 'value', name: chartData.title, color: chartData.color }]}
-          height={240}
-          loading={loading}
-          formatter={chartData.formatter}
-        />
+        <div className="flex items-center justify-center h-[240px] text-body-sm text-text-muted italic bg-bg-subtle/50 rounded-xl border border-dashed border-border">
+          Telemetry data unavailable. Start a live agent run to inspect telemetry.
+        </div>
       </motion.div>
 
       {/* Details Table */}

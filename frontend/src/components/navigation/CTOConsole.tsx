@@ -2,8 +2,22 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, ChevronDown, ChevronUp, Send, Sparkles, X } from 'lucide-react';
 import { cn } from '@/utils';
-import { MOCK_CHAT_MESSAGES, MOCK_SUGGESTED_PROMPTS } from '@/mocks/chat';
 import type { ChatMessage } from '@/types';
+
+const DEFAULT_CHAT_MESSAGES: ChatMessage[] = [
+  {
+    id: 'welcome',
+    role: 'assistant',
+    content: "Hello! I am your AI CTO. Ask me anything about your scanned repository architecture, security, or deployment configs.",
+    timestamp: new Date().toISOString()
+  }
+];
+
+const DEFAULT_SUGGESTED_PROMPTS = [
+  "How can I improve the security score?",
+  "What backend framework was detected?",
+  "How should I containerize the app?"
+];
 
 // ─── Message bubble ───────────────────────────────────────────────
 
@@ -48,7 +62,7 @@ const CONSOLE_EXPANDED_HEIGHT  = 320;
 
 export function CTOConsole() {
   const [expanded, setExpanded] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT_MESSAGES);
+  const [messages, setMessages] = useState<ChatMessage[]>(DEFAULT_CHAT_MESSAGES);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -174,7 +188,7 @@ export function CTOConsole() {
 
             {/* Suggested prompts */}
             <div className="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
-              {MOCK_SUGGESTED_PROMPTS.slice(0, 4).map((prompt) => (
+              {DEFAULT_SUGGESTED_PROMPTS.slice(0, 4).map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => handlePrompt(prompt)}

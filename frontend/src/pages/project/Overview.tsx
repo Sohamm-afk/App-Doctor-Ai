@@ -7,7 +7,6 @@ import { AppRadarChart, AppAreaChart, CHART_COLORS } from '@/components/charts/C
 import { SeverityBadge, StatusBadge, Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/Loading';
 import { mockService } from '@/services/mock';
-import { MOCK_RESPONSE_TIME_SERIES } from '@/mocks/performance';
 import { formatRelativeTime, formatCurrency, getLaunchRecommendation } from '@/utils';
 import { useToast } from '@/components/ui/Toast';
 import type { Project, SecurityIssue, PerformanceMetric, CloudEstimate, Severity } from '@/types';
@@ -25,9 +24,14 @@ export default function OverviewPage() {
   const [cloud, setCloud]         = useState<CloudEstimate | undefined>();
   const [loading, setLoading]     = useState(true);
   const { error } = useToast();
+  const [scanResult, setScanResult] = useState<any>(null);
 
   useEffect(() => {
     if (!id) return;
+    const localScanData = localStorage.getItem(`scan_result_${id}`);
+    if (localScanData) {
+      setScanResult(JSON.parse(localScanData));
+    }
     Promise.all([
       mockService.getProject(id),
       mockService.getSecurityIssues(id),
@@ -45,10 +49,13 @@ export default function OverviewPage() {
     });
   }, [id, error]);
 
-  if (!project && !loading) {
+  if (!loading && !scanResult) {
     return (
-      <div className="text-center py-20">
-        <h2 className="text-h2 font-heading text-text">Project not found</h2>
+      <div className="card p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+        <h2 className="text-h2 font-heading text-text mb-2 font-bold">No analysis available.</h2>
+        <p className="text-body-sm text-text-muted max-w-sm">
+          Please onboard and run a scan on this repository to view application insights.
+        </p>
       </div>
     );
   }
@@ -58,18 +65,13 @@ export default function OverviewPage() {
   const highCount      = security.filter((s) => s.severity === 'high').length;
 
   const radarData = [
-    { subject: 'Security',     value: 58 },
-    { subject: 'Performance',  value: 72 },
-    { subject: 'Architecture', value: 80 },
-    { subject: 'Cloud Cost',   value: 65 },
-    { subject: 'Scalability',  value: 76 },
-    { subject: 'Code Quality', value: 85 },
+    { subject: 'Security',     value: scanResult?.launch_score?.security ?? 100 },
+    { subject: 'Performance',  value: scanResult?.launch_score?.performance ?? 100 },
+    { subject: 'Architecture', value: scanResult?.launch_score?.overall ?? 100 },
+    { subject: 'Cloud Cost',   value: scanResult?.launch_score?.cloud ?? 100 },
+    { subject: 'Scalability',  value: scanResult?.launch_score?.cloud ?? 100 },
+    { subject: 'Code Quality', value: scanResult?.launch_score?.quality ?? 100 },
   ];
-
-  const seriesData = MOCK_RESPONSE_TIME_SERIES.slice(-14).map((pt) => ({
-    date:  new Date(pt.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    value: Math.round(pt.value),
-  }));
 
   return (
     <div>
@@ -96,12 +98,12 @@ export default function OverviewPage() {
           {
             title: 'Security Issues', value: loading ? '—' : security.length,
             unit: 'found', icon: <Shield size={18} />,
-            trend: 'up' as const, trendPositive: false,
+            trend: 'stable' as const, trendPositive: true,
           },
           {
-            title: 'API Response (p95)', value: loading ? '—' : 420,
+            title: 'API Response (p95)', value: '—',
             unit: 'ms', icon: <Zap size={18} />,
-            trend: 'up' as const, trendPositive: false, change: 12,
+            trend: 'stable' as const, trendPositive: true,
           },
           {
             title: 'Monthly Cloud Cost', value: loading ? '—' : (cloud?.monthlyEstimate ?? 0),
@@ -109,9 +111,9 @@ export default function OverviewPage() {
             trend: 'stable' as const,
           },
           {
-            title: 'Technical Debt', value: 18,
+            title: 'Technical Debt', value: loading ? '—' : ((scanResult?.security_findings?.length ?? 0) + (scanResult?.quality_findings?.length ?? 0)),
             unit: 'items', icon: <AlertTriangle size={18} />,
-            trend: 'up' as const, trendPositive: false,
+            trend: 'stable' as const, trendPositive: true,
           },
         ].map((card, i) => (
           <motion.div key={card.title} custom={i} variants={fadeUp} initial="hidden" animate="visible">
@@ -145,14 +147,9 @@ export default function OverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
         <motion.div custom={2} variants={fadeUp} initial="hidden" animate="visible" className="card p-6">
           <h3 className="text-h4 font-semibold text-text mb-4">API Response Time (14 days)</h3>
-          <AppAreaChart
-            data={seriesData}
-            xKey="date"
-            areas={[{ key: 'value', name: 'Response Time (ms)', color: CHART_COLORS.primary }]}
-            height={200}
-            loading={loading}
-            formatter={(v) => `${v}ms`}
-          />
+          <div className="flex items-center justify-center h-[200px] text-body-sm text-text-muted italic bg-bg-subtle/50 rounded-xl border border-dashed border-border">
+            No telemetry data collected.
+          </div>
         </motion.div>
 
         {/* Security summary */}

@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/constants';
 import { cn } from '@/utils';
 import { useToast } from '@/components/ui/Toast';
-import { MOCK_PROJECTS } from '@/mocks/projects';
 
 // Stages definition
 interface ScanStage {
@@ -85,24 +84,12 @@ export default function ScanningPage() {
         // Save complete scan response in localStorage for mockService adapter!
         localStorage.setItem(`scan_result_${projId}`, JSON.stringify(data));
 
-        // Safely push to mock projects database
-        if (!MOCK_PROJECTS.some((p) => p.id === projId)) {
-          MOCK_PROJECTS.push({
-            id: projId,
-            name: data.metadata?.project_name || 'Unnamed Repository',
-            description: `Analysis details for ${data.metadata?.repository_name || 'project'}. Detected type: ${data.metadata?.project_type || 'Unknown'}. Size: ${data.metadata?.repository_size || 'Small'}.`,
-            repositoryUrl: github_url || '',
-            language: (((data.metadata?.languages || [])[0] || 'unknown').toLowerCase() as any),
-            framework: data.metadata?.frontend || data.metadata?.backend || 'Other',
-            status: 'active',
-            launchScore: data.launch_score?.overall || 74,
-            lastScannedAt: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            cloudProvider: 'other',
-            teamSize: 1,
-            tags: data.metadata?.languages || [],
-          });
+        // Save scanned project list dynamically in localStorage
+        const listStr = localStorage.getItem('scanned_projects_list') || '[]';
+        const ids: string[] = JSON.parse(listStr);
+        if (!ids.includes(projId)) {
+          ids.push(projId);
+          localStorage.setItem('scanned_projects_list', JSON.stringify(ids));
         }
 
         // Dynamically customize log text for specific stages

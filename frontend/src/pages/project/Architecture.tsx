@@ -125,6 +125,10 @@ export default function ArchitecturePage() {
           <div className="absolute inset-0 flex items-center justify-center bg-bg-card/50 backdrop-blur-sm z-10">
             <span className="text-body-sm text-text-muted">Loading architecture map…</span>
           </div>
+        ) : nodes.length === 0 ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-bg-card text-center p-8">
+            <span className="text-body-sm text-text-muted italic">Architecture information unavailable.</span>
+          </div>
         ) : (
           <ReactFlow
             nodes={nodes}

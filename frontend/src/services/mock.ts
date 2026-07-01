@@ -4,8 +4,6 @@
  * Intercepts calls and returns real backend findings from localStorage cache if present,
  * or returns empty sets for a clean non-fabricated interface.
  */
-import { MOCK_PROJECTS, getMockProject } from '@/mocks/projects';
-import { MOCK_CHAT_SESSION, MOCK_SUGGESTED_PROMPTS } from '@/mocks/chat';
 import type {
   Project, SecurityIssue, PerformanceMetric,
   CloudEstimate, Report, ChatMessage, ChatSession,
@@ -19,7 +17,14 @@ const delay = (ms = 400) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function mockGetProjects(): Promise<Project[]> {
   await delay(200);
-  return MOCK_PROJECTS;
+  const listStr = localStorage.getItem('scanned_projects_list') || '[]';
+  const ids: string[] = JSON.parse(listStr);
+  const projects: Project[] = [];
+  for (const id of ids) {
+    const p = await mockGetProject(id);
+    if (p) projects.push(p);
+  }
+  return projects;
 }
 
 export async function mockGetProject(id: string): Promise<Project | undefined> {
@@ -27,13 +32,24 @@ export async function mockGetProject(id: string): Promise<Project | undefined> {
   const localScanData = localStorage.getItem(`scan_result_${id}`);
   if (localScanData) {
     const scanData = JSON.parse(localScanData);
-    const scannedProject = MOCK_PROJECTS.find(p => p.id === id);
-    if (scannedProject) {
-      scannedProject.launchScore = scanData.launch_score?.overall ?? 74;
-      return scannedProject;
-    }
+    return {
+      id,
+      name: scanData.metadata?.project_name || 'Unnamed Project',
+      description: `Real-time repository analysis for ${scanData.metadata?.repository_name}.`,
+      repositoryUrl: scanData.metadata?.repository_name ? `https://github.com/${scanData.metadata.repository_name}` : '',
+      language: (((scanData.metadata?.languages || [])[0] || 'unknown').toLowerCase() as any),
+      framework: scanData.metadata?.frontend || scanData.metadata?.backend || 'Other',
+      status: 'active',
+      launchScore: scanData.launch_score?.overall ?? 74,
+      lastScannedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      cloudProvider: 'other',
+      teamSize: 1,
+      tags: scanData.metadata?.languages || [],
+    };
   }
-  return getMockProject(id);
+  return undefined;
 }
 
 // ─── Security ─────────────────────────────────────────────────────
@@ -153,8 +169,21 @@ export async function mockGetReports(projectId: string): Promise<Report[]> {
 
 export async function mockGetChatSession(projectId: string): Promise<ChatSession> {
   await delay(200);
-  void projectId;
-  return MOCK_CHAT_SESSION;
+  return {
+    id: `chat-${projectId}`,
+    projectId,
+    title: 'AI CTO Conversation',
+    messages: [
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: "Hello! I am your AI CTO. Ask me anything about your scanned repository architecture, security, or deployment configs.",
+        timestamp: new Date().toISOString()
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
 }
 
 export async function mockSendChatMessage(_sessionId: string, content: string): Promise<ChatMessage> {
@@ -167,8 +196,6 @@ export async function mockSendChatMessage(_sessionId: string, content: string): 
     isStreaming: false,
   };
 }
-
-export { MOCK_SUGGESTED_PROMPTS };
 
 // ─── Architecture ─────────────────────────────────────────────────
 

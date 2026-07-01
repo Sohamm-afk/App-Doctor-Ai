@@ -2,11 +2,17 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Send, Sparkles, User, Lightbulb, ShieldAlert, Cpu } from 'lucide-react';
-import { mockService, MOCK_SUGGESTED_PROMPTS } from '@/services/mock';
+import { mockService } from '@/services/mock';
 import { Button } from '@/components/ui/Button';
 import { InformationCard } from '@/components/cards/Cards';
 import { useToast } from '@/components/ui/Toast';
 import type { ChatMessage } from '@/types';
+
+const SUGGESTED_PROMPTS = [
+  "How can I improve the security score?",
+  "What database was detected?",
+  "Tell me about the architecture type."
+];
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -142,7 +148,7 @@ export default function AICTOPage() {
         {/* Suggested Prompts */}
         <div className="px-6 py-2.5 bg-bg-subtle/50 border-t border-border flex items-center gap-2 overflow-x-auto no-scrollbar">
           <span className="text-[10px] text-text-muted font-semibold uppercase flex-shrink-0">Suggested:</span>
-          {MOCK_SUGGESTED_PROMPTS.slice(0, 4).map((prompt) => (
+          {SUGGESTED_PROMPTS.slice(0, 4).map((prompt: string) => (
             <button
               key={prompt}
               onClick={() => handleSend(prompt)}
