@@ -6,7 +6,6 @@ import { MetricCard, LaunchScoreCard } from '@/components/cards/Cards';
 import { AppRadarChart, AppAreaChart, CHART_COLORS } from '@/components/charts/Charts';
 import { SeverityBadge, StatusBadge, Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/Loading';
-import { mockService } from '@/services/mock';
 import { formatRelativeTime, formatCurrency, getLaunchRecommendation } from '@/utils';
 import { useToast } from '@/components/ui/Toast';
 import type { Project, SecurityIssue, PerformanceMetric, CloudEstimate, Severity } from '@/types';
@@ -18,12 +17,7 @@ const fadeUp = {
 
 export default function OverviewPage() {
   const { id } = useParams<{ id: string }>();
-  const [project, setProject]     = useState<Project | undefined>();
-  const [security, setSecurity]   = useState<SecurityIssue[]>([]);
-  const [perf, setPerf]           = useState<PerformanceMetric[]>([]);
-  const [cloud, setCloud]         = useState<CloudEstimate | undefined>();
   const [loading, setLoading]     = useState(true);
-  const { error } = useToast();
   const [scanResult, setScanResult] = useState<any>(null);
 
   useEffect(() => {
@@ -32,22 +26,8 @@ export default function OverviewPage() {
     if (localScanData) {
       setScanResult(JSON.parse(localScanData));
     }
-    Promise.all([
-      mockService.getProject(id),
-      mockService.getSecurityIssues(id),
-      mockService.getPerformanceMetrics(id),
-      mockService.getCloudEstimate(id),
-    ]).then(([proj, sec, perf_, cld]) => {
-      setProject(proj);
-      setSecurity(sec);
-      setPerf(perf_);
-      setCloud(cld);
-      setLoading(false);
-    }).catch((err) => {
-      error('Failed to load project details', err instanceof Error ? err.message : String(err));
-      setLoading(false);
-    });
-  }, [id, error]);
+    setLoading(false);
+  }, [id]);
 
   if (!loading && !scanResult) {
     return (
@@ -60,9 +40,18 @@ export default function OverviewPage() {
     );
   }
 
+  const security = scanResult?.security_findings || [];
+  const project = scanResult ? {
+    name: scanResult.metadata?.project_name || 'Unnamed Repository',
+    status: 'active' as const,
+    framework: scanResult.metadata?.frontend || scanResult.metadata?.backend || 'Other',
+    lastScannedAt: new Date().toISOString(),
+    launchScore: scanResult.launch_score?.overall ?? 0,
+  } : undefined;
+
   const recommendation = getLaunchRecommendation(project?.launchScore ?? 0);
-  const criticalCount  = security.filter((s) => s.severity === 'critical').length;
-  const highCount      = security.filter((s) => s.severity === 'high').length;
+  const criticalCount  = security.filter((s: any) => s.severity === 'critical').length;
+  const highCount      = security.filter((s: any) => s.severity === 'high').length;
 
   const radarData = [
     { subject: 'Security',     value: scanResult?.launch_score?.security ?? 100 },
@@ -106,8 +95,8 @@ export default function OverviewPage() {
             trend: 'stable' as const, trendPositive: true,
           },
           {
-            title: 'Monthly Cloud Cost', value: loading ? '—' : (cloud?.monthlyEstimate ?? 0),
-            format: 'currency' as const, icon: <Cloud size={18} />,
+            title: 'Monthly Cloud Cost', value: 'Not Determined',
+            icon: <Cloud size={18} />,
             trend: 'stable' as const,
           },
           {
@@ -165,8 +154,8 @@ export default function OverviewPage() {
               {[
                 { label: 'Critical', count: criticalCount },
                 { label: 'High',     count: highCount     },
-                { label: 'Medium',   count: security.filter(s => s.severity === 'medium').length },
-                { label: 'Low',      count: security.filter(s => s.severity === 'low').length    },
+                { label: 'Medium',   count: security.filter((s: any) => s.severity === 'medium').length },
+                { label: 'Low',      count: security.filter((s: any) => s.severity === 'low').length    },
               ].map((row) => {
                 const pct = security.length > 0 ? Math.round((row.count / security.length) * 100) : 0;
                 const sev = row.label.toLowerCase() as Severity;
