@@ -1,13 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Cloud, DollarSign, Sparkles, TrendingDown } from 'lucide-react';
 import { CloudCostCard, AIRecommendationCard } from '@/components/cards/Cards';
-import { AppPieChart, CHART_COLOR_LIST } from '@/components/charts/Charts';
-import { DataTable } from '@/components/common/Table';
-import { mockService } from '@/services/mock';
-import { useToast } from '@/components/ui/Toast';
-import type { CloudEstimate, CloudCostBreakdown, TableColumn } from '@/types';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -15,53 +8,6 @@ const fadeUp = {
 };
 
 export default function CloudPage() {
-  const { id } = useParams<{ id: string }>();
-  const [estimate, setEstimate] = useState<CloudEstimate | undefined>();
-  const [loading, setLoading] = useState(true);
-  const { error } = useToast();
-
-  useEffect(() => {
-    if (!id) return;
-    mockService.getCloudEstimate(id)
-      .then((data) => {
-        setEstimate(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        error('Failed to load cloud estimate', err instanceof Error ? err.message : String(err));
-        setLoading(false);
-      });
-  }, [id, error]);
-
-  const pieData = (estimate?.breakdown ?? []).map((item, i) => ({
-    name: item.service,
-    value: item.cost,
-    color: CHART_COLOR_LIST[i % CHART_COLOR_LIST.length],
-  }));
-
-  const columns: TableColumn<CloudCostBreakdown>[] = [
-    {
-      key: 'service',
-      header: 'Service Component',
-      sortable: true,
-      render: (v) => <span className="font-semibold text-text">{String(v)}</span>,
-    },
-    {
-      key: 'cost',
-      header: 'Monthly Cost',
-      sortable: true,
-      render: (v) => <span className="text-text font-medium">${Number(v)}/mo</span>,
-    },
-    {
-      key: 'percentage',
-      header: 'Share',
-      sortable: true,
-      render: (v) => <span className="text-text-muted">{Number(v)}%</span>,
-    },
-  ];
-
-  const totalSavings = (estimate?.optimizations ?? []).reduce((acc, curr) => acc + curr.savings, 0);
-
   return (
     <div>
       {/* Header */}
@@ -71,7 +17,7 @@ export default function CloudPage() {
           <h1 className="font-heading text-h1 text-text">Cloud Cost</h1>
         </div>
         <p className="text-body-sm text-text-muted">
-          Analyze server resource expenditures and identify AI-driven saving opportunities.
+          Review potential cloud deployment configurations and cost optimizations.
         </p>
       </motion.div>
 
@@ -80,29 +26,28 @@ export default function CloudPage() {
         <motion.div custom={0} variants={fadeUp} initial="hidden" animate="visible">
           <CloudCostCard
             title="Monthly Cost Estimate"
-            amount={estimate?.monthlyEstimate ?? 0}
-            subtitle="Based on active cloud infrastructure"
+            amount="Not Determined"
+            subtitle="Live billing cannot be determined from files"
             icon={<DollarSign size={20} />}
-            loading={loading}
+            loading={false}
           />
         </motion.div>
         <motion.div custom={1} variants={fadeUp} initial="hidden" animate="visible">
           <CloudCostCard
             title="Annual Run Rate"
-            amount={estimate?.annualEstimate ?? 0}
-            subtitle="Extrapolated over 12 months"
+            amount="Not Determined"
+            subtitle="Live run rate is Not Determined"
             icon={<Cloud size={20} />}
-            loading={loading}
+            loading={false}
           />
         </motion.div>
         <motion.div custom={2} variants={fadeUp} initial="hidden" animate="visible">
           <CloudCostCard
             title="AI Identified Savings"
-            amount={totalSavings}
-            subtitle="Monthly potential optimizations"
-            savings={totalSavings}
+            amount="Not Determined"
+            subtitle="Potential monthly savings"
             icon={<TrendingDown size={20} className="text-emerald-500" />}
-            loading={loading}
+            loading={false}
           />
         </motion.div>
       </div>
@@ -110,21 +55,18 @@ export default function CloudPage() {
       {/* Chart and Table breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
         {/* Cost distribution */}
-        <motion.div custom={3} variants={fadeUp} initial="hidden" animate="visible" className="card p-6">
+        <motion.div custom={3} variants={fadeUp} initial="hidden" animate="visible" className="card p-6 min-h-[240px] flex flex-col justify-center text-center">
           <h3 className="text-h4 font-semibold text-text mb-4">Resource Cost Breakdown</h3>
-          <AppPieChart data={pieData} height={260} innerRadius={60} loading={loading} />
+          <div className="text-body-sm text-text-muted italic bg-bg-subtle/50 rounded-xl border border-dashed border-border p-8">
+            Resource expenditures cannot be determined from repository files.
+          </div>
         </motion.div>
 
         {/* Cost Table */}
-        <motion.div custom={4} variants={fadeUp} initial="hidden" animate="visible" className="card p-6 flex flex-col">
+        <motion.div custom={4} variants={fadeUp} initial="hidden" animate="visible" className="card p-6 min-h-[240px] flex flex-col justify-center text-center">
           <h3 className="text-h4 font-semibold text-text mb-4">Resource Allocation</h3>
-          <div className="flex-1 overflow-auto">
-            <DataTable
-              columns={columns}
-              data={estimate?.breakdown ?? []}
-              loading={loading}
-              getRowKey={(item) => item.service}
-            />
+          <div className="text-body-sm text-text-muted italic bg-bg-subtle/50 rounded-xl border border-dashed border-border p-8">
+            Allocation shares are Not Determined.
           </div>
         </motion.div>
       </div>
@@ -136,17 +78,13 @@ export default function CloudPage() {
           <h3 className="text-h4 font-semibold text-text">Cost Optimization Insights</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          {(estimate?.optimizations ?? []).map((opt) => (
-            <AIRecommendationCard
-              key={opt.id}
-              title={opt.title}
-              description={opt.description}
-              effort={opt.effort}
-              impact={opt.impact}
-              savings={opt.savings}
-              loading={loading}
-            />
-          ))}
+          <AIRecommendationCard
+            title="Deployment Optimization"
+            description="Scanned deployment configuration files can be optimized, but actual dollar savings are Not Determined."
+            effort="low"
+            impact="low"
+            loading={false}
+          />
         </div>
       </motion.div>
     </div>

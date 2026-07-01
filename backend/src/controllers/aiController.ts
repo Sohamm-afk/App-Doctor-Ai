@@ -28,7 +28,8 @@ Generate a detailed, technical, and actionable review divided into exactly these
 ## Priority Recommendations
 ## Deployment Advice
 
-Use Markdown formatting. Under each section header, provide specific analysis relating directly to the technologies and findings in the scan result payload. Do not invent details or exaggerate issues. If no critical issues are found, confirm the codebase stability.`;
+Use Markdown formatting. Under each section header, provide specific analysis relating directly to the technologies and findings in the scan result payload.
+CRITICAL LIMITATIONS: Do not invent, guess, or estimate details regarding live concurrent users, runtime telemetry (e.g. CPU/memory load), database response times, live cloud billing costs, Kubernetes scaling thresholds, or Redis recommendations. If these metrics are mentioned or requested, state them explicitly as "Not Determined".`;
 
       const reviewText = await GeminiService.generateContent(prompt);
       res.status(200).json({ review: reviewText });
@@ -56,7 +57,8 @@ ${JSON.stringify(history || [])}
 
 User question: ${message}
 
-Provide a helpful, highly technical, and concise response. Avoid code syntax errors. Do not make up facts or vulnerabilities that were not scanned. Use Markdown.`;
+Provide a helpful, highly technical, and concise response. Avoid code syntax errors.
+CRITICAL: Never simulate, invent, or guess details about concurrent users, live cloud billing, database response times, runtime telemetry (CPU/memory load), Kubernetes scaling capacity, or Redis caching. If these topics are asked and not explicitly found in the scanned files, output "Not Determined". Use Markdown.`;
 
       const responseText = await GeminiService.generateContent(prompt);
       res.status(200).json({ reply: responseText });
@@ -94,7 +96,8 @@ Rules:
 - Generate fixes ONLY for issues detected in the scan result findings.
 - If there are no security or quality issues detected, return an empty array [].
 - Make the diffs syntax-correct for the respective programming language.
-- Ensure the JSON returned is fully valid and parseable.`;
+- Ensure the JSON returned is fully valid and parseable.
+- CRITICAL: Never generate fixes or recommendations for live scaling, Redis cache, Kubernetes, CPU/memory telemetry, or billing cost fixes.`;
 
       const responseJson = await GeminiService.generateContent(prompt, true);
       let fixes = [];

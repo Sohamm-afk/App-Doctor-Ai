@@ -280,7 +280,7 @@ export function SecurityCard({ issue, onClick, loading }: SecurityCardProps) {
 
 interface CloudCostCardProps {
   title:      string;
-  amount:     number;
+  amount:     number | string;
   subtitle?:  string;
   savings?:   number;
   icon?:      React.ReactNode;
@@ -298,7 +298,9 @@ export function CloudCostCard({ title, amount, subtitle, savings, icon, loading,
         </div>
         {icon && <div className="text-primary-500">{icon}</div>}
       </div>
-      <p className="text-display-sm font-bold text-text font-heading">{formatCurrency(amount)}</p>
+      <p className="text-display-sm font-bold text-text font-heading">
+        {typeof amount === 'number' ? formatCurrency(amount) : amount}
+      </p>
       {savings !== undefined && savings > 0 && (
         <Badge variant="success" className="mt-2">
           Save {formatCurrency(savings)}/mo

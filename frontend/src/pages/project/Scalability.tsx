@@ -1,20 +1,11 @@
 import { motion } from 'framer-motion';
 import { TrendingUp, Users, Zap, ShieldAlert, Cpu } from 'lucide-react';
 import { MetricCard, AIRecommendationCard, InformationCard } from '@/components/cards/Cards';
-import { AppLineChart, CHART_COLORS } from '@/components/charts/Charts';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
   visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.06, duration: 0.35 } }),
 };
-
-const SCALABILITY_PROJECTIONS = [
-  { users: '100 Users',  latency: 180, errors: 0.1 },
-  { users: '500 Users',  latency: 220, errors: 0.2 },
-  { users: '1K Users',   latency: 290, errors: 0.5 },
-  { users: '5K Users',   latency: 420, errors: 0.8 },
-  { users: '10K Users',  latency: 950, errors: 3.4 },
-];
 
 export default function ScalabilityPage() {
   return (
@@ -26,7 +17,7 @@ export default function ScalabilityPage() {
           <h1 className="font-heading text-h1 text-text">Scalability</h1>
         </div>
         <p className="text-body-sm text-text-muted">
-          Predict how your system response times, queues, and databases perform under heavy loading stress.
+          Predict and analyze repository scaling configs, database connection configurations, and limits.
         </p>
       </motion.div>
 
@@ -35,31 +26,28 @@ export default function ScalabilityPage() {
         {[
           {
             title: 'Max Concurrent Users',
-            value: '8,500',
-            unit: 'est',
+            value: 'Not Determined',
             icon: <Users size={16} />,
             trend: 'stable' as const,
             trendPositive: true,
           },
           {
             title: 'Database Conn Utilization',
-            value: '78%',
+            value: 'Not Determined',
             icon: <Cpu size={16} />,
-            trend: 'up' as const,
-            trendPositive: false,
-            change: 15,
+            trend: 'stable' as const,
+            trendPositive: true,
           },
           {
             title: 'Request Queue Delay',
-            value: '14 ms',
+            value: 'Not Determined',
             icon: <Zap size={16} />,
-            trend: 'up' as const,
-            trendPositive: false,
-            change: 22,
+            trend: 'stable' as const,
+            trendPositive: true,
           },
           {
             title: 'Scalability Score',
-            value: '76/100',
+            value: 'Not Determined',
             icon: <TrendingUp size={16} />,
             trend: 'stable' as const,
             trendPositive: true,
@@ -73,30 +61,24 @@ export default function ScalabilityPage() {
 
       {/* Scalability Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
-        <motion.div custom={4} variants={fadeUp} initial="hidden" animate="visible" className="card p-6 lg:col-span-2">
+        <motion.div custom={4} variants={fadeUp} initial="hidden" animate="visible" className="card p-6 lg:col-span-2 flex flex-col justify-center min-h-[280px]">
           <h3 className="text-h4 font-semibold text-text mb-4">Latency Projections vs. User Load</h3>
-          <AppLineChart
-            data={SCALABILITY_PROJECTIONS}
-            xKey="users"
-            lines={[
-              { key: 'latency', name: 'Latency (ms)', color: CHART_COLORS.primary },
-            ]}
-            height={240}
-            formatter={(v) => `${v}ms`}
-          />
+          <div className="flex-1 flex items-center justify-center text-body-sm text-text-muted italic bg-bg-subtle/50 rounded-xl border border-dashed border-border p-8">
+            Latency and throughput projections under heavy user load cannot be determined from static repository analysis.
+          </div>
         </motion.div>
 
         {/* Warning Banner */}
         <motion.div custom={5} variants={fadeUp} initial="hidden" animate="visible" className="flex flex-col gap-4 justify-between">
           <InformationCard
             title="Database Connection Limits"
-            description="Database pool is capped at 100 connections. Above 8,000 active users, threads will block waiting for a database socket."
+            description="Database pool configuration limits are not determined from the repository contents."
             variant="warning"
             icon={<ShieldAlert className="text-amber-500" size={18} />}
           />
           <InformationCard
             title="Kubernetes HPA Config"
-            description="Horizontal Pod Autoscaler triggers scaling at 80% CPU. Minimum pods are set to 2. Consider increasing min replica count to 4."
+            description="Horizontal Pod Autoscaler configuration parameters are not determined in the repository files."
             variant="default"
             icon={<Cpu className="text-secondary-500" size={18} />}
           />
@@ -108,16 +90,10 @@ export default function ScalabilityPage() {
         <h3 className="text-h4 font-semibold text-text">Scalability Optimizations</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <AIRecommendationCard
-            title="Implement Redis Session Caching"
-            description="Migrate local session storage to Redis to enable stateless horizontally-scalable API replicas."
+            title="Scalability Configuration"
+            description="Automated Redis cache scaling and index optimization details are Not Determined."
             effort="low"
-            impact="high"
-          />
-          <AIRecommendationCard
-            title="Index Order Table by User ID"
-            description="Missing indexes on orders(user_id) table will degrade lookup times when concurrent orders exceed 500/min."
-            effort="medium"
-            impact="high"
+            impact="low"
           />
         </div>
       </motion.div>

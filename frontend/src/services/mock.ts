@@ -106,28 +106,15 @@ export async function mockGetCloudEstimate(projectId: string): Promise<CloudEsti
   await delay(300);
   const localScanData = localStorage.getItem(`scan_result_${projectId}`);
   if (localScanData) {
-    const scanData = JSON.parse(localScanData);
-    const monthlyEstimate = (scanData.launch_score?.cloud ?? 80) > 80 ? 120 : 340;
     return {
       id: `cloud-${projectId}`,
       projectId,
       provider: 'other',
-      monthlyEstimate,
-      annualEstimate: monthlyEstimate * 12,
+      monthlyEstimate: 0,
+      annualEstimate: 0,
       currency: 'USD',
-      breakdown: [
-        { service: 'Compute', cost: monthlyEstimate * 0.6, percentage: 60 },
-        { service: 'Storage', cost: monthlyEstimate * 0.2, percentage: 20 },
-        { service: 'Database', cost: monthlyEstimate * 0.2, percentage: 20 },
-      ],
-      optimizations: (scanData.deployment_findings ?? []).map((d: any, idx: number) => ({
-        id: `opt-${idx}`,
-        title: `Deploy using ${d.type}`,
-        description: `Utilize discovered configuration at ${d.configPath} for containerized deployment.`,
-        savings: 45,
-        effort: 'low',
-        impact: 'medium'
-      })),
+      breakdown: [],
+      optimizations: [],
       updatedAt: new Date().toISOString()
     };
   }
