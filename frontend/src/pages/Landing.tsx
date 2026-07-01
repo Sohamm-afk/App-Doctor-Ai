@@ -25,7 +25,7 @@ const CAPABILITIES = [
     label: 'Security Audit',
     desc: 'Automated OWASP Top 10 vulnerability scanner checking for SQL injections, secrets exposure, and package flaws.',
     graphic: (
-      <div className="mt-4 p-3 bg-red-50 rounded-xl border border-red-100 font-mono text-[10px] text-red-700 space-y-1">
+      <div className="mt-4 p-3 bg-red-950/30 rounded-xl border border-red-900/40 font-mono text-[10px] text-red-400 space-y-1">
         <p className="font-bold flex items-center gap-1"><ShieldAlert size={12} /> SQL Injection Risk</p>
         <p className="opacity-80">Line 42: db.raw("SELECT * FROM users WHERE id = " + input)</p>
       </div>
@@ -36,12 +36,12 @@ const CAPABILITIES = [
     label: 'Architecture Visualization',
     desc: 'Auto-generates dependency maps showing CDNs, database configurations, and services interactions directly from code.',
     graphic: (
-      <div className="mt-4 flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100">
-        <span className="px-2 py-1 bg-white text-[9px] font-mono rounded border border-border">CDN</span>
+      <div className="mt-4 flex items-center justify-center gap-2 p-3 bg-purple-950/30 rounded-xl border border-purple-900/40">
+        <span className="px-2 py-1 bg-bg-card text-[9px] font-mono rounded border border-border">CDN</span>
         <ArrowRight size={10} className="text-purple-400" />
         <span className="px-2 py-1 bg-primary-500 text-white text-[9px] font-mono rounded">API Gateway</span>
         <ArrowRight size={10} className="text-purple-400" />
-        <span className="px-2 py-1 bg-white text-[9px] font-mono rounded border border-border">DB</span>
+        <span className="px-2 py-1 bg-bg-card text-[9px] font-mono rounded border border-border">DB</span>
       </div>
     ),
   },
@@ -50,7 +50,7 @@ const CAPABILITIES = [
     label: 'Performance Analysis',
     desc: 'Identifies runtime inefficiencies, slow database connection threads, and CPU caching failures.',
     graphic: (
-      <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100 font-mono text-[10px] text-amber-700 flex justify-between items-center">
+      <div className="mt-4 p-3 bg-amber-950/30 rounded-xl border border-amber-900/40 font-mono text-[10px] text-amber-400 flex justify-between items-center">
         <span>p95 Latency</span>
         <span className="font-bold text-red-500">420ms (Baseline: 200ms)</span>
       </div>
@@ -61,7 +61,7 @@ const CAPABILITIES = [
     label: 'Cloud Cost Prediction',
     desc: 'Translates code components directly into AWS, GCP, and Vercel infrastructure cost estimates.',
     graphic: (
-      <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100 text-blue-700 flex justify-between items-center">
+      <div className="mt-4 p-3 bg-blue-950/30 rounded-xl border border-blue-900/40 text-blue-400 flex justify-between items-center">
         <span className="text-[10px] font-semibold">Monthly Estimated Spend</span>
         <span className="font-bold text-body-md">$1,847/mo</span>
       </div>
@@ -72,7 +72,7 @@ const CAPABILITIES = [
     label: 'Scalability Simulation',
     desc: 'Models app behavior under 10x or 100x user volumes to pinpoint database locks and autoscaler limits.',
     graphic: (
-      <div className="mt-4 p-2 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-800 space-y-1 text-[10px]">
+      <div className="mt-4 p-2 bg-emerald-950/30 rounded-xl border border-emerald-900/40 text-emerald-400 space-y-1 text-[10px]">
         <div className="flex justify-between font-bold">
           <span>Concurrency Capacity</span>
           <span>8,500 users</span>
@@ -88,7 +88,7 @@ const CAPABILITIES = [
     label: 'Technical Debt Detection',
     desc: 'Analyzes design-pattern violations and code duplications to estimate exact remediation hours.',
     graphic: (
-      <div className="mt-4 p-3 bg-gray-50 rounded-xl border border-border text-text-muted flex justify-between items-center text-[10px]">
+      <div className="mt-4 p-3 bg-slate-900/30 rounded-xl border border-border text-text-muted flex justify-between items-center text-[10px]">
         <span>Total Refactor Debt</span>
         <span className="font-bold font-mono">18 tasks · 54 hrs</span>
       </div>
@@ -99,7 +99,7 @@ const CAPABILITIES = [
     label: 'AI CTO Chat',
     desc: 'A persistent, context-aware engineering chatbot built to answer deep codebase queries.',
     graphic: (
-      <div className="mt-4 p-2.5 bg-primary-50 rounded-xl border border-primary-100 text-[10px] text-primary-800 flex gap-2">
+      <div className="mt-4 p-2.5 bg-primary-50 rounded-xl border border-primary-100 text-[10px] text-primary-200 flex gap-2">
         <Bot size={14} className="flex-shrink-0 mt-0.5" />
         <p className="italic">"We found a database leak on orders list."</p>
       </div>
@@ -121,7 +121,7 @@ const CAPABILITIES = [
     label: 'Investor Report Generation',
     desc: 'Compiles thorough technical compliance and production readiness audits for external stakeholders.',
     graphic: (
-      <div className="mt-4 p-2.5 bg-blue-50/50 rounded-xl border border-blue-100 flex items-center justify-between text-blue-800 text-[10px] font-medium">
+      <div className="mt-4 p-2.5 bg-blue-950/30 rounded-xl border border-blue-900/40 flex items-center justify-between text-blue-300 text-[10px] font-medium">
         <span className="flex items-center gap-1.5"><FileText size={12} /> Executive_Audit.pdf</span>
         <span className="text-[9px] bg-blue-100 px-1.5 py-0.5 rounded font-mono">1.8 MB</span>
       </div>
@@ -234,7 +234,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-text font-body selection:bg-primary-100 selection:text-primary-700 overflow-x-hidden">
+    <div className="min-h-screen bg-bg text-text font-body selection:bg-primary-100 selection:text-primary-700 overflow-x-hidden">
       {/* ─── 1. HERO SECTION ─── */}
       <section className="relative pt-36 pb-28 border-b border-border flex flex-col items-center justify-center overflow-hidden">
         {/* Floating Background network lines canvas */}
@@ -279,7 +279,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── 2. THE PROBLEM SECTION ─── */}
-      <section ref={problemRef} className="py-24 bg-white border-b border-border scroll-mt-10">
+      <section ref={problemRef} className="py-24 bg-bg-card border-b border-border scroll-mt-10">
         <div className="w-full max-w-content mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-caption font-bold text-red-500 uppercase tracking-widest block mb-2">The Vulnerability Trap</span>
@@ -293,7 +293,7 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Column A: Traditional Deployment Path (Failure) */}
-            <div className="card p-8 border-red-100 bg-red-50/5 space-y-6">
+            <div className="card p-8 border-red-900/30 bg-red-950/10 space-y-6">
               <h3 className="text-h3 font-bold text-red-700 flex items-center gap-2"><X size={20} /> Traditional Path</h3>
               <div className="space-y-6 relative pl-2">
                 {[
@@ -303,7 +303,7 @@ export default function LandingPage() {
                   { step: 'Production Issues Appear', desc: 'Vulnerabilities, database leaks, and cost spikes appear in live environments.' },
                 ].map((item, idx) => (
                   <div key={item.step} className="flex gap-4 items-start">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-red-100 text-red-700 border border-red-200 flex items-center justify-center font-bold text-[10px] mt-0.5">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-red-950/50 text-red-400 border border-red-900/50 flex items-center justify-center font-bold text-[10px] mt-0.5">
                       {idx + 1}
                     </div>
                     <div>
@@ -316,7 +316,7 @@ export default function LandingPage() {
             </div>
 
             {/* Column B: AppDoctor Path (Security) */}
-            <div className="card p-8 border-emerald-100 bg-emerald-50/5 space-y-6">
+            <div className="card p-8 border-emerald-900/30 bg-emerald-950/10 space-y-6">
               <h3 className="text-h3 font-bold text-emerald-800 flex items-center gap-2"><Check size={20} className="text-emerald-600" /> AppDoctor Path</h3>
               <div className="space-y-6 relative pl-2">
                 {[
@@ -326,7 +326,7 @@ export default function LandingPage() {
                   { step: 'Readiness Score Generated', desc: 'Calculates Launch Score with prioritized one-click patches before push.' },
                 ].map((item, idx) => (
                   <div key={item.step} className="flex gap-4 items-start">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center font-bold text-[10px] mt-0.5">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-950/50 text-emerald-400 border border-emerald-900/50 flex items-center justify-center font-bold text-[10px] mt-0.5">
                       {idx + 1}
                     </div>
                     <div>
@@ -342,7 +342,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── 3. HOW APPDOCTOR WORKS (Horizontal scroll timeline) ─── */}
-      <section className="py-24 bg-[#FAFAFA] border-b border-border">
+      <section className="py-24 bg-bg border-b border-border">
         <div className="w-full max-w-content mx-auto px-6">
           <div className="text-center mb-16">
             <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Process</span>
@@ -363,7 +363,7 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1 }}
-                className="card p-6 bg-white border border-border flex flex-col justify-between"
+                className="card p-6 bg-bg-card border border-border flex flex-col justify-between"
               >
                 <div>
                   <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold font-heading mb-4 text-body-sm">
@@ -379,7 +379,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── 4. MISSION CONTROL PREVIEW (Interactive) ─── */}
-      <section className="py-24 bg-white border-b border-border">
+      <section className="py-24 bg-bg-card border-b border-border">
         <div className="w-full max-w-content mx-auto px-6">
           <div className="text-center mb-16 max-w-2xl mx-auto">
             <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Interface Preview</span>
@@ -403,12 +403,12 @@ export default function LandingPage() {
                 <button
                   key={tab.key}
                   onClick={() => setActivePreview(tab.key as any)}
-                  className={cn(
-                    'w-full text-left p-4 rounded-xl border transition-all text-body-sm flex flex-col justify-start',
-                    activePreview === tab.key
-                      ? 'bg-primary-500 text-white border-primary-600 shadow-sm'
-                      : 'bg-[#FAFAFA] border-border text-text hover:border-primary-200'
-                  )}
+                    className={cn(
+                      'w-full text-left p-4 rounded-xl border transition-all text-body-sm flex flex-col justify-start',
+                      activePreview === tab.key
+                        ? 'bg-primary-500 text-white border-primary-600 shadow-sm'
+                        : 'bg-bg border-border text-text hover:border-primary-200'
+                    )}
                 >
                   <span className="font-semibold">{tab.label}</span>
                   <span className={cn('text-[10px] mt-0.5', activePreview === tab.key ? 'text-primary-100' : 'text-text-muted')}>{tab.desc}</span>
@@ -519,7 +519,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── 5. CAPABILITIES SECTION ─── */}
-      <section className="py-24 bg-[#FAFAFA] border-b border-border">
+      <section className="py-24 bg-bg border-b border-border">
         <div className="w-full max-w-content mx-auto px-6">
           <div className="max-w-2xl mb-16">
             <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Capabilities</span>
@@ -535,7 +535,7 @@ export default function LandingPage() {
             {CAPABILITIES.map((cap) => (
               <div
                 key={cap.label}
-                className="card p-6 bg-white border border-border flex flex-col justify-between hover:border-primary-300 transition-colors group cursor-default"
+                className="card p-6 bg-bg-card border border-border flex flex-col justify-between hover:border-primary-300 transition-colors group cursor-default"
               >
                 <div>
                   <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center mb-5 group-hover:bg-primary-500 group-hover:text-white transition-colors">
@@ -552,7 +552,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── 6. WHY DEVELOPERS NEED THIS ─── */}
-      <section className="py-24 bg-white border-b border-border">
+      <section className="py-24 bg-bg-card border-b border-border">
         <div className="w-full max-w-4xl mx-auto px-6">
           <div className="text-center mb-16">
             <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Workflow Analysis</span>
@@ -562,7 +562,7 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
             {/* Traditional */}
-            <div className="card p-8 border-red-100 bg-red-50/10 space-y-4">
+            <div className="card p-8 border-red-900/30 bg-red-950/10 space-y-4">
               <h3 className="text-h4 font-bold text-red-700 font-heading">Traditional Development</h3>
               <ul className="space-y-3.5 text-body-sm text-text-muted">
                 <li className="flex items-start gap-2.5"><span className="text-red-500 font-bold">✕</span> Separate static security scanners</li>
@@ -573,7 +573,7 @@ export default function LandingPage() {
             </div>
 
             {/* AppDoctor */}
-            <div className="card p-8 border-emerald-200 bg-emerald-50/10 space-y-4">
+            <div className="card p-8 border-emerald-900/30 bg-emerald-950/10 space-y-4">
               <h3 className="text-h4 font-bold text-emerald-800 font-heading">AppDoctor AI</h3>
               <ul className="space-y-3.5 text-body-sm text-text">
                 <li className="flex items-start gap-2.5"><span className="text-emerald-500 font-bold">✓</span> One intelligent unified operations platform</li>
@@ -587,7 +587,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── 7. WHO IS THIS FOR ─── */}
-      <section className="py-24 bg-[#FAFAFA] border-b border-border">
+      <section className="py-24 bg-bg border-b border-border">
         <div className="w-full max-w-content mx-auto px-6">
           <div className="text-center mb-16">
             <span className="text-caption font-bold text-primary-600 uppercase tracking-widest block mb-2">Audience</span>
@@ -597,7 +597,7 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             {AUDIENCES.map((aud) => (
-              <div key={aud.title} className="card p-6 bg-white border border-border flex flex-col justify-between">
+              <div key={aud.title} className="card p-6 bg-bg-card border border-border flex flex-col justify-between">
                 <div>
                   <h4 className="text-body-sm font-bold text-text mb-2 font-heading">{aud.title}</h4>
                   <p className="text-caption text-text-muted leading-relaxed">{aud.desc}</p>
@@ -609,13 +609,13 @@ export default function LandingPage() {
       </section>
 
       {/* ─── 8. FINAL CTA ─── */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-bg-card">
         <div className="w-full max-w-3xl mx-auto px-6 text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="card p-12 bg-[#FAFAFA] border border-border relative overflow-hidden"
+            className="card p-12 bg-bg border border-border relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary-50 rounded-full blur-3xl opacity-50 -z-10" />
             <div className="w-12 h-12 rounded-xl bg-primary-500 text-white flex items-center justify-center mx-auto mb-6 shadow-sm">
@@ -637,7 +637,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── 9. MINIMAL FOOTER ─── */}
-      <footer className="py-12 bg-white text-caption text-text-subtle border-t border-border">
+      <footer className="py-12 bg-bg-card text-caption text-text-subtle border-t border-border">
         <div className="w-full max-w-content mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <p>© 2026 AppDoctor AI. All rights reserved. Hackathon MVP.</p>
           <div className="flex items-center gap-6 font-semibold">
