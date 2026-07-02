@@ -96,7 +96,7 @@ export class AnalysisService {
 
     let hasReadme = false;
     let hasLicense = false;
-    let hasTests = false;
+    let hasTests = this.checkForTests(repoPath);
     let hasEslint = false;
     let hasPrettier = false;
     let hasTsConfig = false;
@@ -127,7 +127,7 @@ export class AnalysisService {
       // Flag checks based on file presence
       if (fileLower === 'readme.md') hasReadme = true;
       if (fileLower === 'license' || fileLower === 'license.txt') hasLicense = true;
-      if (fileLower.includes('.test.') || fileLower.includes('.spec.') || relPath.includes('test/') || relPath.includes('tests/')) hasTests = true;
+      if (fileLower.includes('.test.') || fileLower.includes('.spec.')) hasTests = true;
       if (fileLower.startsWith('.eslintrc') || fileLower === 'eslint.config.js') hasEslint = true;
       if (fileLower.startsWith('.prettierrc') || fileLower === 'prettier.config.js') hasPrettier = true;
       if (fileLower === 'tsconfig.json') hasTsConfig = true;
@@ -611,5 +611,48 @@ export class AnalysisService {
         cloud: cloudScore
       }
     };
+  }
+
+  private static checkForTests(dir: string): boolean {
+    if (!fs.existsSync(dir)) return false;
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const nameLower = entry.name.toLowerCase();
+        if (entry.isDirectory()) {
+          if (
+            nameLower === '.git' ||
+            nameLower === 'node_modules' ||
+            nameLower === 'dist' ||
+            nameLower === 'build' ||
+            nameLower === 'coverage'
+          ) {
+            continue;
+          }
+          if (nameLower === 'test' || nameLower === 'tests' || nameLower === '__tests__') {
+            return true;
+          }
+          if (this.checkForTests(path.join(dir, entry.name))) {
+            return true;
+          }
+        } else if (entry.isFile()) {
+          if (
+            nameLower.endsWith('.test.js') ||
+            nameLower.endsWith('.spec.js') ||
+            nameLower.endsWith('.test.ts') ||
+            nameLower.endsWith('.spec.ts') ||
+            nameLower.endsWith('.test.jsx') ||
+            nameLower.endsWith('.spec.jsx') ||
+            nameLower.endsWith('.test.tsx') ||
+            nameLower.endsWith('.spec.tsx')
+          ) {
+            return true;
+          }
+        }
+      }
+    } catch (err) {
+      // Ignore read errors
+    }
+    return false;
   }
 }
