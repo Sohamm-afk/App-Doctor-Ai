@@ -9,7 +9,6 @@ import { cn } from '@/utils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { CommandPalette, SearchBar } from '@/components/common/CommandPalette';
-import { mockService } from '@/services/mock';
 import type { Project } from '@/types';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 
@@ -36,7 +35,32 @@ function ProjectSelector() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    mockService.getProjects().then(setProjects);
+    const listStr = localStorage.getItem('scanned_projects_list') || '[]';
+    const ids: string[] = JSON.parse(listStr);
+    const mappedProjects: Project[] = [];
+    for (const id_ of ids) {
+      const localScanData = localStorage.getItem(`scan_result_${id_}`);
+      if (localScanData) {
+        const scanData = JSON.parse(localScanData);
+        mappedProjects.push({
+          id: id_,
+          name: scanData.metadata?.project_name || 'Unnamed Project',
+          description: `Real-time repository analysis for ${scanData.metadata?.repository_name}.`,
+          repositoryUrl: scanData.metadata?.repository_name ? `https://github.com/${scanData.metadata.repository_name}` : '',
+          language: (((scanData.metadata?.languages || [])[0] || 'unknown').toLowerCase() as any),
+          framework: scanData.metadata?.frontend || scanData.metadata?.backend || 'Other',
+          status: 'active',
+          launchScore: scanData.launch_score?.overall ?? 74,
+          lastScannedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          cloudProvider: 'other',
+          teamSize: 1,
+          tags: scanData.metadata?.languages || [],
+        });
+      }
+    }
+    setProjects(mappedProjects);
   }, [id, open]);
 
   const project = projects.find((p) => p.id === id);
@@ -62,29 +86,35 @@ function ProjectSelector() {
         <>
           <div className="fixed inset-0 z-dropdown" onClick={() => setOpen(false)} />
           <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-border rounded-xl shadow-dropdown z-dropdown py-1 overflow-hidden">
-            {projects.map((p) => (
-              <Link
-                key={p.id}
-                to={`/workspace/project/${p.id}/overview`}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 hover:bg-bg-subtle transition-colors',
-                  p.id === id && 'bg-primary-50',
-                )}
-              >
-                <div className={cn('w-2 h-2 rounded-full flex-shrink-0', p.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400')} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-body-sm font-medium text-text truncate">{p.name}</p>
-                  <p className="text-caption text-text-muted">{p.framework}</p>
-                </div>
-                <span className={cn(
-                  'text-caption font-bold flex-shrink-0',
-                  p.launchScore >= 80 ? 'text-emerald-600' : p.launchScore >= 60 ? 'text-amber-500' : 'text-red-500',
-                )}>
-                  {p.launchScore}
-                </span>
-              </Link>
-            ))}
+            {projects.length === 0 ? (
+              <div className="px-3 py-2.5 text-caption text-text-muted italic">
+                No repositories analyzed yet.
+              </div>
+            ) : (
+              projects.map((p) => (
+                <Link
+                  key={p.id}
+                  to={`/workspace/project/${p.id}/overview`}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 hover:bg-bg-subtle transition-colors',
+                    p.id === id && 'bg-primary-50',
+                  )}
+                >
+                  <div className={cn('w-2 h-2 rounded-full flex-shrink-0', p.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400')} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-body-sm font-medium text-text truncate">{p.name}</p>
+                    <p className="text-caption text-text-muted">{p.framework}</p>
+                  </div>
+                  <span className={cn(
+                    'text-caption font-bold flex-shrink-0',
+                    p.launchScore >= 80 ? 'text-emerald-600' : p.launchScore >= 60 ? 'text-amber-500' : 'text-red-500',
+                  )}>
+                    {p.launchScore}
+                  </span>
+                </Link>
+              ))
+            )}
             <hr className="my-1 border-border" />
             <Link
               to="/workspace/upload"
@@ -128,7 +158,32 @@ export function Navbar({ onMobileMenuToggle }: NavbarProps) {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    mockService.getProjects().then(setProjects);
+    const listStr = localStorage.getItem('scanned_projects_list') || '[]';
+    const ids: string[] = JSON.parse(listStr);
+    const mappedProjects: Project[] = [];
+    for (const id_ of ids) {
+      const localScanData = localStorage.getItem(`scan_result_${id_}`);
+      if (localScanData) {
+        const scanData = JSON.parse(localScanData);
+        mappedProjects.push({
+          id: id_,
+          name: scanData.metadata?.project_name || 'Unnamed Project',
+          description: `Real-time repository analysis for ${scanData.metadata?.repository_name}.`,
+          repositoryUrl: scanData.metadata?.repository_name ? `https://github.com/${scanData.metadata.repository_name}` : '',
+          language: (((scanData.metadata?.languages || [])[0] || 'unknown').toLowerCase() as any),
+          framework: scanData.metadata?.frontend || scanData.metadata?.backend || 'Other',
+          status: 'active',
+          launchScore: scanData.launch_score?.overall ?? 74,
+          lastScannedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          cloudProvider: 'other',
+          teamSize: 1,
+          tags: scanData.metadata?.languages || [],
+        });
+      }
+    }
+    setProjects(mappedProjects);
   }, [projectId]);
 
   const project = projects.find((p) => p.id === projectId);
