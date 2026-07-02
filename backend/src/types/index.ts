@@ -12,7 +12,7 @@ export interface TechnologyInfo {
   languages: string[];
   frontend?: string;
   backend?: string;
-  database?: string;
+  database?: string | null;
   packageManager?: string;
   deployment?: string;
   ciCd?: string;

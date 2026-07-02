@@ -119,21 +119,41 @@ export class DetectionService {
     }
 
     // 4. Database detection
-    const allDepKeys = Object.keys(deps).join(' ').toLowerCase() + ' ' + pyDeps.toLowerCase();
-    if (allDepKeys.includes('mongoose') || allDepKeys.includes('mongodb') || allDepKeys.includes('pymongo')) {
+    if (deps['@prisma/client'] || deps['prisma']) {
+      database = 'Prisma';
+    } else if (deps['drizzle-orm']) {
+      database = 'Drizzle';
+    } else if (deps['typeorm']) {
+      database = 'TypeORM';
+    } else if (deps['sequelize']) {
+      database = 'Sequelize';
+    } else if (deps['mongoose'] || deps['mongodb']) {
       database = 'MongoDB';
-    } else if (allDepKeys.includes('pg') || allDepKeys.includes('postgres') || allDepKeys.includes('psycopg')) {
-      database = 'PostgreSQL';
-    } else if (allDepKeys.includes('mysql') || allDepKeys.includes('mysql2')) {
-      database = 'MySQL';
-    } else if (allDepKeys.includes('sqlite') || allDepKeys.includes('sqlite3')) {
-      database = 'SQLite';
-    } else if (allDepKeys.includes('firebase')) {
-      database = 'Firebase';
-    } else if (allDepKeys.includes('supabase')) {
-      database = 'Supabase';
-    } else if (allDepKeys.includes('redis') || allDepKeys.includes('ioredis')) {
+    } else if (deps['redis'] || deps['ioredis']) {
       database = 'Redis';
+    } else if (deps['pg'] || deps['postgres'] || deps['pg-promise']) {
+      database = 'PostgreSQL';
+    } else if (deps['mysql'] || deps['mysql2']) {
+      database = 'MySQL';
+    } else if (deps['sqlite3'] || deps['better-sqlite3']) {
+      database = 'SQLite';
+    }
+
+    if (!database && pyDeps) {
+      const lowerPy = pyDeps.toLowerCase();
+      if (lowerPy.includes('redis')) {
+        database = 'Redis';
+      } else if (lowerPy.includes('pymongo') || lowerPy.includes('mongoengine')) {
+        database = 'MongoDB';
+      } else if (lowerPy.includes('psycopg2') || lowerPy.includes('psycopg')) {
+        database = 'PostgreSQL';
+      } else if (lowerPy.includes('pymysql') || lowerPy.includes('mysql-connector-python') || lowerPy.includes('mysqlclient')) {
+        database = 'MySQL';
+      }
+    }
+
+    if (!database && fs.existsSync(repoPath)) {
+      database = (await this.findDatabaseInfo(repoPath)) || undefined;
     }
 
     // 5. Deployment configurations detection
@@ -181,10 +201,88 @@ export class DetectionService {
       languages,
       frontend,
       backend,
-      database,
+      database: database || null,
       packageManager,
       deployment,
       ciCd,
     };
+  }
+
+  private static async findDatabaseInfo(dir: string): Promise<string | null> {
+    try {
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        const nameLower = entry.name.toLowerCase();
+
+        if (entry.isDirectory()) {
+          if (
+            nameLower === '.git' ||
+            nameLower === 'node_modules' ||
+            nameLower === 'dist' ||
+            nameLower === 'build' ||
+            nameLower === 'coverage' ||
+            nameLower === 'test' ||
+            nameLower === 'tests' ||
+            nameLower === 'example' ||
+            nameLower === 'examples' ||
+            nameLower === 'docs' ||
+            nameLower === 'vendor' ||
+            nameLower === 'tmp' ||
+            nameLower === 'temp' ||
+            nameLower === 'venv' ||
+            nameLower === '.venv' ||
+            nameLower === '__pycache__'
+          ) {
+            continue;
+          }
+          const subResult = await this.findDatabaseInfo(fullPath);
+          if (subResult) return subResult;
+        } else if (entry.isFile()) {
+          if (nameLower === 'schema.prisma') return 'Prisma';
+          if (nameLower.startsWith('drizzle.config.')) return 'Drizzle';
+          if (nameLower.startsWith('ormconfig.')) return 'TypeORM';
+          if (nameLower === '.sequelizerc') return 'Sequelize';
+
+          const ext = path.extname(entry.name).toLowerCase();
+          if (['.js', '.ts', '.tsx', '.jsx', '.py', '.go', '.java'].includes(ext)) {
+            try {
+              const content = await fs.promises.readFile(fullPath, 'utf8');
+              const jsImportRegex = /(?:import\s+.*\s+from\s+['"]|require\(['"])(redis|ioredis|pg|postgres|mysql|mysql2|sqlite3|better-sqlite3|better-sqlite|mongodb|mongoose|sequelize|typeorm|drizzle-orm|@prisma\/client)['"]/i;
+              const pyImportRegex = /^\s*(?:import|from)\s+(redis|pymongo|mongoengine|psycopg2|psycopg|mysql|mysql\.connector|pymysql|sqlite3)\b/m;
+
+              const jsMatch = content.match(jsImportRegex);
+              if (jsMatch) {
+                const matched = jsMatch[1].toLowerCase();
+                if (matched === 'redis' || matched === 'ioredis') return 'Redis';
+                if (matched === 'pg' || matched === 'postgres') return 'PostgreSQL';
+                if (matched === 'mysql' || matched === 'mysql2') return 'MySQL';
+                if (matched === 'sqlite3' || matched === 'better-sqlite3' || matched === 'better-sqlite') return 'SQLite';
+                if (matched === 'mongodb' || matched === 'mongoose') return 'MongoDB';
+                if (matched === 'sequelize') return 'Sequelize';
+                if (matched === 'typeorm') return 'TypeORM';
+                if (matched === 'drizzle-orm') return 'Drizzle';
+                if (matched === '@prisma/client') return 'Prisma';
+              }
+
+              const pyMatch = content.match(pyImportRegex);
+              if (pyMatch) {
+                const matched = pyMatch[1].toLowerCase();
+                if (matched === 'redis') return 'Redis';
+                if (matched === 'pymongo' || matched === 'mongoengine') return 'MongoDB';
+                if (matched === 'psycopg2' || matched === 'psycopg') return 'PostgreSQL';
+                if (matched === 'mysql' || matched === 'mysql\.connector' || matched === 'pymysql') return 'MySQL';
+                if (matched === 'sqlite3') return 'SQLite';
+              }
+            } catch {
+              // Ignore read errors
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignore read errors
+    }
+    return null;
   }
 }
