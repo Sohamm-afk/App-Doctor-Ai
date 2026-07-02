@@ -166,6 +166,34 @@ export class AnalysisService {
         if (['.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.cs', '.php', '.go', '.rs', '.json', '.yml', '.yaml', '.xml'].includes(ext)) {
           const content = await fs.promises.readFile(filePath, 'utf8');
 
+          const cpBindings = new Set<string>();
+          if (content.includes('child_process')) {
+            let match;
+            const importDestructureRegex = /(?:import|const|let|var)\s*\{\s*([^}]+)\s*\}\s*(?:from|=)\s*['"]child_process['"]/g;
+            while ((match = importDestructureRegex.exec(content)) !== null) {
+              const bindings = match[1].split(',');
+              bindings.forEach(b => {
+                const parts = b.trim().split(/\s+as\s+/);
+                const boundName = parts[parts.length - 1].trim();
+                if (boundName) cpBindings.add(boundName);
+              });
+            }
+
+            const importNamespaceRegex = /(?:import\s+(?:\*\s+as\s+)?([a-zA-Z0-9_$]+)|(?:const|let|var)\s+([a-zA-Z0-9_$]+))\s*(?:from|=)\s*['"]child_process['"]/g;
+            while ((match = importNamespaceRegex.exec(content)) !== null) {
+              const boundName = (match[1] || match[2] || '').trim();
+              if (boundName) cpBindings.add(boundName);
+            }
+
+            if (cpBindings.size === 0) {
+              cpBindings.add('exec');
+              cpBindings.add('execSync');
+              cpBindings.add('spawn');
+              cpBindings.add('spawnSync');
+              cpBindings.add('fork');
+            }
+          }
+
           // Global framework flags detection from code contents
           if (content.includes('express') || content.includes("require('express')")) hasExpress = true;
           if (content.includes('@nestjs/core')) hasNest = true;
@@ -199,17 +227,68 @@ export class AnalysisService {
             }
 
             // 2. shell execution injection
-            if ((line.includes('exec(') || line.includes('execSync(')) &&
-              (line.includes('`') || line.includes('+') || line.includes('${')) &&
-              !line.includes('//')) {
+            let isDangerousCPCall = false;
+            let isDynamic = false;
+            if (content.includes('child_process') && !line.includes('//') && !line.includes('/*')) {
+              const methods = ['exec', 'execSync', 'spawn', 'spawnSync', 'fork'];
+              for (const method of methods) {
+                // Direct call: e.g. exec( but not .exec(
+                const directRegex = new RegExp(`\\b${method}\\s*\\(`, 'g');
+                let directMatch;
+                while ((directMatch = directRegex.exec(line)) !== null) {
+                  const charBefore = line.substring(0, directMatch.index).trim().slice(-1);
+                  if (charBefore !== '.' && cpBindings.has(method)) {
+                    isDangerousCPCall = true;
+                    break;
+                  }
+                }
+                if (isDangerousCPCall) break;
+
+                // Namespace/Instance call: e.g. cp.exec(
+                for (const binding of cpBindings) {
+                  if (binding !== method) {
+                    const nsRegex = new RegExp(`\\b${binding}\\.${method}\\s*\\(`, 'g');
+                    if (nsRegex.test(line)) {
+                      isDangerousCPCall = true;
+                      break;
+                    }
+                  }
+                }
+                if (isDangerousCPCall) break;
+              }
+
+              if (isDangerousCPCall) {
+                // Determine if called with dynamic or user-controlled input
+                const argMatch = line.match(/\(([^)]+)\)/);
+                if (argMatch && argMatch[1]) {
+                  const arg = argMatch[1].trim();
+                  const isQuoted = (arg.startsWith("'") && arg.endsWith("'")) || (arg.startsWith('"') && arg.endsWith('"'));
+                  if (!isQuoted || arg.includes('+') || (arg.includes('`') && arg.includes('${'))) {
+                    isDynamic = true;
+                  }
+                }
+              }
+            }
+
+            if (isDangerousCPCall && isDynamic) {
+              const lowerLine = line.toLowerCase();
+              const hasUserInput = lowerLine.includes('req.') || 
+                                   lowerLine.includes('input') || 
+                                   lowerLine.includes('param') || 
+                                   lowerLine.includes('url') || 
+                                   lowerLine.includes('path') || 
+                                   lowerLine.includes('arg') || 
+                                   lowerLine.includes('cmd');
+              const confidence: 'high' | 'medium' = hasUserInput ? 'high' : 'medium';
+
               securityFindings.push({
                 title: 'Dangerous child_process.exec() Usage',
                 severity: 'critical',
-                description: 'Executing shell commands with dynamic string concatenation is highly vulnerable to Command Injection.',
+                description: 'Executing shell commands with dynamic string concatenation or variable arguments is highly vulnerable to Command Injection.',
                 evidence: line.trim(),
                 file: relPath,
                 lineNumber: lineNum,
-                confidence: 'medium',
+                confidence,
               });
             }
 
