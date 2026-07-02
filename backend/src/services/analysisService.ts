@@ -18,18 +18,48 @@ export class AnalysisService {
         const res = path.resolve(dir, dirent.name);
         const nameLower = dirent.name.toLowerCase();
 
-        // Standard build/VCS ignore list
-        if (
-          nameLower === 'node_modules' ||
-          nameLower === 'dist' ||
-          nameLower === 'build' ||
-          nameLower === 'coverage' ||
-          nameLower === '.git' ||
-          nameLower === 'venv' ||
-          nameLower === '.venv' ||
-          nameLower === '__pycache__' ||
-          nameLower === '.ds_store'
-        ) {
+        const IGNORED_DIRECTORIES = new Set([
+          ".git",
+          "node_modules",
+
+          "dist",
+          "build",
+          "coverage",
+
+          "test",
+          "tests",
+          "__tests__",
+
+          "example",
+          "examples",
+
+          "docs",
+          "doc",
+
+          "demo",
+          "demos",
+
+          "fixtures",
+
+          "vendor",
+
+          ".venv",
+          "venv",
+
+          "__pycache__",
+
+          ".next",
+
+          "out",
+
+          "tmp",
+          "temp",
+
+          ".idea",
+          ".vscode"
+        ]);
+
+        if (dirent.isDirectory() && IGNORED_DIRECTORIES.has(nameLower)) {
           return [];
         }
 
@@ -153,9 +183,9 @@ export class AnalysisService {
             }
 
             // 2. shell execution injection
-            if ((line.includes('exec(') || line.includes('execSync(')) && 
-                (line.includes('`') || line.includes('+') || line.includes('${')) &&
-                !line.includes('//')) {
+            if ((line.includes('exec(') || line.includes('execSync(')) &&
+              (line.includes('`') || line.includes('+') || line.includes('${')) &&
+              !line.includes('//')) {
               securityFindings.push({
                 title: 'Dangerous child_process.exec() Usage',
                 severity: 'critical',
@@ -239,9 +269,9 @@ export class AnalysisService {
             }
 
             // 8. Insecure Cookie Settings
-            if ((line.includes('cookie(') || line.includes('cookies.set(')) && 
-                !line.includes('secure: true') && 
-                !line.includes('//')) {
+            if ((line.includes('cookie(') || line.includes('cookies.set(')) &&
+              !line.includes('secure: true') &&
+              !line.includes('//')) {
               securityFindings.push({
                 title: 'Insecure Cookie Configuration',
                 severity: 'medium',

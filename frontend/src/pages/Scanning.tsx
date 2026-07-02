@@ -21,15 +21,15 @@ const INITIAL_STAGES: ScanStage[] = [
   { id: '1', label: 'Connecting to GitHub', status: 'pending', logs: ['Initializing sandbox tunnel...', 'Contacting github.com via secure client SSH...', 'Connection established successfully.'] },
   { id: '2', label: 'Cloning Repository', status: 'pending', logs: ['Cloning master branch of repository...', 'Fetching file tree structure...', 'Cloned remote modules successfully.'] },
   { id: '3', label: 'Reading Project Structure', status: 'pending', logs: ['Indexing files metadata...', 'Scanning directory paths...', 'Resolving config manifests...'] },
-  { id: '4', label: 'Detecting Languages', status: 'pending', logs: ['Analyzing source file extensions...', 'Discovered project source code languages.'] },
-  { id: '5', label: 'Detecting Frameworks', status: 'pending', logs: ['Resolving packages manifest...', 'Primary stack framework detected.'] },
+  { id: '4', label: 'Detecting Languages', status: 'pending', logs: ['Analyzing source file extensions...', 'Detecting language configurations...'] },
+  { id: '5', label: 'Detecting Frameworks', status: 'pending', logs: ['Resolving packages manifest...', 'Detecting stack frameworks...'] },
   { id: '6', label: 'Building Dependency Graph', status: 'pending', logs: ['Parsing imports tree...', 'Resolving package dependencies...', 'Graph generated successfully.'] },
-  { id: '7', label: 'Understanding Architecture', status: 'pending', logs: ['Mapping microservices dependencies...', 'Identified service and datastore nodes.'] },
-  { id: '8', label: 'Running Security Analysis', status: 'pending', logs: ['Scanning for code injection flaws...', 'WARNING: SQL injection vulnerability detected in search.ts line 42.', 'Scanning secrets... WARNING: AWS Access token key candidate exposed in configuration.'] },
-  { id: '9', label: 'Performance Review', status: 'pending', logs: ['Evaluating response times...', 'Detected query connection pooling lag: p95 latency is 420ms (Warning threshold: 300ms).'] },
-  { id: '10', label: 'Cloud Cost Prediction', status: 'pending', logs: ['Simulating server cost configurations...', 'Cost forecast: $1,847/month.', 'Identified $521/month potential savings.'] },
-  { id: '11', label: 'AI CTO Discussion', status: 'pending', logs: ['Spinning virtual CTO specialist agents...', 'Discussing launch score mitigation strategies...', 'Remediation plan generated.'] },
-  { id: '12', label: 'Calculating Launch Score', status: 'pending', logs: ['Weighting vulnerabilities, bottlenecks, and costs...', 'Launch Score resolved: 74/100 (Caution required).'] },
+  { id: '7', label: 'Understanding Architecture', status: 'pending', logs: ['Mapping codebase pattern architecture...', 'Resolving architecture pattern nodes.'] },
+  { id: '8', label: 'Running Security Analysis', status: 'pending', logs: ['Scanning for code flaws...', 'Analyzing secret keys configurations...'] },
+  { id: '9', label: 'Performance Review', status: 'pending', logs: ['Evaluating codebase performance traits...', 'Analyzing structural bottlenecks...'] },
+  { id: '10', label: 'Cloud Cost Prediction', status: 'pending', logs: ['Assessing cloud integration patterns...', 'Reading deployment configurations...'] },
+  { id: '11', label: 'AI CTO Discussion', status: 'pending', logs: ['Spinning virtual CTO agent...', 'Reviewing audit recommendations...'] },
+  { id: '12', label: 'Calculating Launch Score', status: 'pending', logs: ['Finalizing metrics...', 'Compiling launch score report...'] },
 ];
 
 export default function ScanningPage() {
@@ -50,21 +50,18 @@ export default function ScanningPage() {
 
   // Trigger Backend Analysis API on mount
   useEffect(() => {
+    console.log("ScanningPage github_url:", github_url);
+
     if (!github_url) {
-      // Mock run fallback for demo when no URL is supplied
-      setApiResult({
-        project_name: 'E-Commerce Platform',
-        repository_name: 'proj-001',
-        project_type: 'Full Stack',
-        languages: ['TypeScript', 'CSS', 'HTML'],
-        frontend: 'React',
-        backend: 'Next.js',
-        package_manager: 'npm',
-        docker_supported: false,
-        readme: true,
-        file_count: 2869,
-        folder_count: 120,
-      });
+      console.error("No GitHub URL received.");
+
+      setApiLoading(false);
+      setApiError("No GitHub repository URL was provided.");
+
+      error("No repository URL found. Please upload a repository again.");
+
+      navigate(ROUTES.WORKSPACE_UPLOAD);
+
       return;
     }
 
@@ -99,9 +96,9 @@ export default function ScanningPage() {
               return {
                 ...stage,
                 logs: [
-                  `Cloning master branch of ${data.repository_name || 'repository'}...`,
+                  `Cloning master branch of ${data.metadata?.project_name || 'repository'}...`,
                   'Fetching remote file tree structure...',
-                  `Successfully fetched ${data.file_count || 0} files.`,
+                  `Successfully fetched ${data.metadata?.file_count || 0} files.`,
                 ],
               };
             }
@@ -110,13 +107,13 @@ export default function ScanningPage() {
                 ...stage,
                 logs: [
                   'Indexing files metadata...',
-                  `Found ${data.file_count || 0} files across ${data.folder_count || 0} folders.`,
-                  `Docker supported: ${data.docker_supported ? 'Yes' : 'No'}. README: ${data.readme ? 'Yes' : 'No'}.`,
+                  `Indexed ${data.metadata?.file_count || 0} files across ${data.metadata?.folder_count || 0} folders.`,
+                  `Docker configuration detected: ${data.metadata?.docker_supported ? 'Yes' : 'No'}.`,
                 ],
               };
             }
             if (stage.id === '4') {
-              const langsStr = (data.languages || []).join(', ') || 'unknown';
+              const langsStr = (data.metadata?.languages || []).join(', ') || 'none';
               return {
                 ...stage,
                 logs: [
@@ -126,12 +123,52 @@ export default function ScanningPage() {
               };
             }
             if (stage.id === '5') {
-              const fw = data.frontend || data.backend || 'No major framework';
+              const fw = data.metadata?.frontend || data.metadata?.backend || 'No major framework';
               return {
                 ...stage,
                 logs: [
                   'Resolving packages manifest...',
-                  `Primary framework detected: ${fw} with ${data.package_manager || 'npm'} package manager.`,
+                  `Primary stack: ${fw}.`,
+                ],
+              };
+            }
+            if (stage.id === '8') {
+              const count = data.security_findings?.length ?? 0;
+              return {
+                ...stage,
+                logs: [
+                  'Scanning repository files for vulnerabilities...',
+                  `Found ${count} security findings.`,
+                ],
+              };
+            }
+            if (stage.id === '9') {
+              const count = data.performance_findings?.length ?? 0;
+              return {
+                ...stage,
+                logs: [
+                  'Evaluating performance patterns...',
+                  `Found ${count} performance warnings.`,
+                ],
+              };
+            }
+            if (stage.id === '10') {
+              const targets = data.metadata?.docker_supported ? ['Docker'] : [];
+              return {
+                ...stage,
+                logs: [
+                  'Assessing cloud integration patterns...',
+                  `Detected deployment targets: ${targets.join(', ') || 'Not Determined'}.`,
+                ],
+              };
+            }
+            if (stage.id === '12') {
+              const scoreVal = data.launch_score?.overall ?? 0;
+              return {
+                ...stage,
+                logs: [
+                  'Finalizing score metrics...',
+                  `Launch Score calculated: ${scoreVal}.`,
                 ],
               };
             }
@@ -319,7 +356,7 @@ export default function ScanningPage() {
                 </div>
                 <h3 className="text-h3 font-bold text-text mb-1 font-heading">Sandbox Analysis Complete</h3>
                 <p className="text-body-sm text-text-muted mb-4 max-w-sm">
-                  Launch readiness score has been resolved at <strong className="text-amber-600">74/100</strong>. Issues and optimization fixes are listed.
+                  Launch readiness score has been resolved at <strong className="text-amber-600">{(apiResult?.launch_score?.overall) ?? 0}/100</strong>. Issues and optimization fixes are listed.
                 </p>
                 <Button
                   variant="primary"
