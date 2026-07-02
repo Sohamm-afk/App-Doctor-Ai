@@ -480,31 +480,70 @@ export class AnalysisService {
       archType = 'Monorepo / Microservices Federation';
     }
 
-    // Build dynamic ReactFlow Architecture Graph
-    const nodes = [
-      { id: 'node-client', label: 'Client App', type: 'client', position: { x: 100, y: 150 }, data: { technology: techInfo.frontend || 'Web Browser' } },
-      { id: 'node-gateway', label: 'API Gateway', type: 'gateway', position: { x: 300, y: 150 }, data: { technology: 'Vite Proxy / CORS' } },
-      { id: 'node-service', label: 'Backend API', type: 'service', position: { x: 500, y: 150 }, data: { technology: techInfo.backend || 'Runtime Service', health: securityFindings.length > 3 ? 'warning' : 'healthy' } },
-    ];
-    const edges = [
-      { id: 'edge-client-gateway', source: 'node-client', target: 'node-gateway', label: 'HTTPS' },
-      { id: 'edge-gateway-service', source: 'node-gateway', target: 'node-service', label: 'Proxy' },
-    ];
+    // Build dynamic ReactFlow Architecture Graph based on project type classification
+    const projectName = path.basename(repoPath)
+      .split(/[-_]/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
 
-    if (techInfo.database) {
+    let projectType: 'Frontend' | 'Backend' | 'Full Stack' | 'Library' | 'CLI' | 'Unknown' = 'Unknown';
+    if (techInfo.frontend && techInfo.backend) {
+      projectType = 'Full Stack';
+    } else if (techInfo.frontend) {
+      projectType = 'Frontend';
+    } else if (techInfo.backend) {
+      projectType = 'Backend';
+    } else if (scanResult.importantFiles.some((f) => f.toLowerCase().includes('cli') || f.includes('bin/'))) {
+      projectType = 'CLI';
+    } else {
+      projectType = 'Library';
+    }
+
+    const nodes: any[] = [];
+    const edges: any[] = [];
+
+    if (projectType === 'Library') {
       nodes.push({
-        id: 'node-database',
-        label: 'Database Store',
-        type: 'database',
-        position: { x: 700, y: 150 },
-        data: { technology: techInfo.database },
+        id: 'node-library',
+        label: `${projectName} Library`,
+        type: 'library',
+        position: { x: 300, y: 150 },
+        data: { technology: techInfo.backend || techInfo.frontend || 'Library Module' }
       });
-      edges.push({
-        id: 'edge-service-db',
-        source: 'node-service',
-        target: 'node-database',
-        label: 'Driver',
+    } else if (projectType === 'CLI') {
+      nodes.push({
+        id: 'node-cli',
+        label: `${projectName} CLI`,
+        type: 'cli',
+        position: { x: 300, y: 150 },
+        data: { technology: 'CLI Tool' }
       });
+    } else {
+      nodes.push(
+        { id: 'node-client', label: 'Client App', type: 'client', position: { x: 100, y: 150 }, data: { technology: techInfo.frontend || 'Web Browser' } },
+        { id: 'node-gateway', label: 'API Gateway', type: 'gateway', position: { x: 300, y: 150 }, data: { technology: 'Vite Proxy / CORS' } },
+        { id: 'node-service', label: 'Backend API', type: 'service', position: { x: 500, y: 150 }, data: { technology: techInfo.backend || 'Runtime Service', health: securityFindings.length > 3 ? 'warning' : 'healthy' } }
+      );
+      edges.push(
+        { id: 'edge-client-gateway', source: 'node-client', target: 'node-gateway', label: 'HTTPS' },
+        { id: 'edge-gateway-service', source: 'node-gateway', target: 'node-service', label: 'Proxy' }
+      );
+
+      if (techInfo.database) {
+        nodes.push({
+          id: 'node-database',
+          label: 'Database Store',
+          type: 'database',
+          position: { x: 700, y: 150 },
+          data: { technology: techInfo.database },
+        });
+        edges.push({
+          id: 'edge-service-db',
+          source: 'node-service',
+          target: 'node-database',
+          label: 'Driver',
+        });
+      }
     }
 
     const architecture: ArchitectureMetadata = {
