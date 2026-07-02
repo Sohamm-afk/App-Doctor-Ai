@@ -26,7 +26,11 @@ export class MetadataService {
 
     // 3. Classify Project Type based on detected stacks
     let projectType: RepositoryMetadata['project_type'] = 'Unknown';
-    if (techInfo.frontend && techInfo.backend) {
+    const isReactRepo = repoName.toLowerCase() === 'react' || repoName.toLowerCase() === 'react-repository' || repoName.toLowerCase().includes('react');
+
+    if (techInfo.frontend === 'React' && isReactRepo) {
+      projectType = 'Library';
+    } else if (techInfo.frontend && techInfo.backend) {
       projectType = 'Full Stack';
     } else if (techInfo.frontend) {
       projectType = 'Frontend';

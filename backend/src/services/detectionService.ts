@@ -67,6 +67,17 @@ export class DetectionService {
     let rootPackageName = '';
     const packageFiles = findPackageJsons(repoPath);
 
+    const frameworkScores = {
+      React: 0,
+      'Next.js': 0,
+      Vue: 0,
+      Angular: 0,
+      Svelte: 0,
+      Nuxt: 0,
+      Express: 0,
+      NestJS: 0,
+    };
+
     for (const pkgFile of packageFiles) {
       try {
         const fileContent = fs.readFileSync(pkgFile, 'utf8');
@@ -83,26 +94,69 @@ export class DetectionService {
         if (pkgData.devDependencies) Object.assign(deps, pkgData.devDependencies);
         if (pkgData.peerDependencies) Object.assign(deps, pkgData.peerDependencies);
         if (pkgData.optionalDependencies) Object.assign(deps, pkgData.optionalDependencies);
+
+        // Score frameworks - ignore examples, demo, playground, fixtures, docs, tests, test, coverage
+        const relPath = path.relative(repoPath, pkgFile).toLowerCase().replace(/\\/g, '/');
+        const isIgnored = 
+          relPath.includes('/examples/') || relPath.startsWith('examples/') ||
+          relPath.includes('/example/') || relPath.startsWith('example/') ||
+          relPath.includes('/demo/') || relPath.startsWith('demo/') ||
+          relPath.includes('/playground/') || relPath.startsWith('playground/') ||
+          relPath.includes('/fixtures/') || relPath.startsWith('fixtures/') ||
+          relPath.includes('/docs/') || relPath.startsWith('docs/') ||
+          relPath.includes('/tests/') || relPath.startsWith('tests/') ||
+          relPath.includes('/test/') || relPath.startsWith('test/') ||
+          relPath.includes('/coverage/') || relPath.startsWith('coverage/');
+
+        if (!isIgnored) {
+          const localDeps: Record<string, any> = {};
+          if (pkgData.dependencies) Object.assign(localDeps, pkgData.dependencies);
+          if (pkgData.devDependencies) Object.assign(localDeps, pkgData.devDependencies);
+          if (pkgData.peerDependencies) Object.assign(localDeps, pkgData.peerDependencies);
+          if (pkgData.optionalDependencies) Object.assign(localDeps, pkgData.optionalDependencies);
+
+          const name = (pkgData.name || '').toLowerCase();
+          if (name === 'react' || name === 'react-dom') frameworkScores['React']++;
+          if (name === 'next') frameworkScores['Next.js']++;
+          if (name === 'vue') frameworkScores['Vue']++;
+          if (name === 'express') frameworkScores['Express']++;
+
+          if (localDeps['react'] || localDeps['react-dom']) frameworkScores['React']++;
+          if (localDeps['next']) frameworkScores['Next.js']++;
+          if (localDeps['vue']) frameworkScores['Vue']++;
+          if (localDeps['@angular/core']) frameworkScores['Angular']++;
+          if (localDeps['svelte'] || localDeps['@sveltejs/kit']) frameworkScores['Svelte']++;
+          if (localDeps['nuxt']) frameworkScores['Nuxt']++;
+          if (localDeps['express']) frameworkScores['Express']++;
+          if (localDeps['@nestjs/core']) frameworkScores['NestJS']++;
+        }
       } catch {}
     }
 
-    // 2a. Frontend frameworks detection
-    if (deps['react'] || deps['react-dom']) frontend = 'React';
-    if (deps['next']) {
-      frontend = 'Next.js';
-      backend = 'Next.js';
-    }
-    if (deps['vue']) frontend = 'Vue';
-    if (deps['@angular/core']) frontend = 'Angular';
-    if (deps['svelte'] || deps['@sveltejs/kit']) frontend = 'Svelte';
-    if (deps['nuxt']) {
-      frontend = 'Nuxt';
-      backend = 'Nuxt';
+    // Determine the highest scoring frontend and backend frameworks
+    let dominantFrontend: string | undefined;
+    let dominantBackend: string | undefined;
+
+    let maxFrontendScore = 0;
+    const frontendFrameworks: (keyof typeof frameworkScores)[] = ['React', 'Next.js', 'Vue', 'Angular', 'Svelte', 'Nuxt'];
+    for (const fw of frontendFrameworks) {
+      if (frameworkScores[fw] > maxFrontendScore) {
+        maxFrontendScore = frameworkScores[fw];
+        dominantFrontend = fw;
+      }
     }
 
-    // 2b. JavaScript backend frameworks
-    if (deps['express']) backend = 'Express';
-    if (deps['@nestjs/core']) backend = 'NestJS';
+    let maxBackendScore = 0;
+    const backendFrameworks: (keyof typeof frameworkScores)[] = ['Express', 'NestJS', 'Next.js', 'Nuxt'];
+    for (const fw of backendFrameworks) {
+      if (frameworkScores[fw] > maxBackendScore) {
+        maxBackendScore = frameworkScores[fw];
+        dominantBackend = fw;
+      }
+    }
+
+    if (maxFrontendScore > 0) frontend = dominantFrontend;
+    if (maxBackendScore > 0) backend = dominantBackend;
 
     // Prevent false positives for libraries themselves
     if (rootPackageName === 'axios') {

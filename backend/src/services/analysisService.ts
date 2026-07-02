@@ -82,8 +82,42 @@ export class AnalysisService {
     const performanceFindings: PerformanceFinding[] = [];
     const deploymentFindings: DeploymentFinding[] = [];
 
+    let repoName = '';
+    try {
+      const pkgPath = path.join(repoPath, 'package.json');
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        if (pkg.name) {
+          repoName = pkg.name.split('/').pop() || pkg.name;
+        }
+      }
+    } catch {}
+
+    if (!repoName) {
+      try {
+        const gitConfigPath = path.join(repoPath, '.git', 'config');
+        if (fs.existsSync(gitConfigPath)) {
+          const configStr = fs.readFileSync(gitConfigPath, 'utf8');
+          const match = configStr.match(/url\s*=\s*(.*)/i);
+          if (match && match[1]) {
+            const urlStr = match[1].trim();
+            const lastPart = urlStr.split('/').pop() || '';
+            repoName = lastPart.replace(/\.git$/, '');
+          }
+        }
+      } catch {}
+    }
+
+    if (!repoName) {
+      repoName = path.basename(repoPath);
+    }
+
+    const isReactRepo = repoName.toLowerCase() === 'react' || repoName.toLowerCase() === 'react-repository' || repoName.toLowerCase().includes('react');
+
     let projectType: 'Frontend' | 'Backend' | 'Full Stack' | 'Library' | 'CLI' | 'Unknown' = 'Unknown';
-    if (techInfo.frontend && techInfo.backend) {
+    if (techInfo.frontend === 'React' && isReactRepo) {
+      projectType = 'Library';
+    } else if (techInfo.frontend && techInfo.backend) {
       projectType = 'Full Stack';
     } else if (techInfo.frontend) {
       projectType = 'Frontend';
@@ -550,7 +584,10 @@ export class AnalysisService {
     let pattern: ArchitectureMetadata['pattern'] = 'Unknown';
     let archType = 'Library / Utility';
 
-    if (projectType === 'Full Stack') {
+    if (techInfo.frontend === 'React' && isReactRepo) {
+      pattern = 'Component-Based Monorepo' as any;
+      archType = 'Library Architecture';
+    } else if (projectType === 'Full Stack') {
       pattern = 'Monolith';
       archType = 'Full Stack Architecture';
     } else if (projectType === 'Frontend') {
@@ -585,36 +622,7 @@ export class AnalysisService {
       }
     }
 
-    // Try to extract clean repository name from package.json or git config to avoid UUID temp paths
-    let repoName = '';
-    try {
-      const pkgPath = path.join(repoPath, 'package.json');
-      if (fs.existsSync(pkgPath)) {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-        if (pkg.name) {
-          repoName = pkg.name.split('/').pop() || pkg.name;
-        }
-      }
-    } catch {}
 
-    if (!repoName) {
-      try {
-        const gitConfigPath = path.join(repoPath, '.git', 'config');
-        if (fs.existsSync(gitConfigPath)) {
-          const config = fs.readFileSync(gitConfigPath, 'utf8');
-          const match = config.match(/url\s*=\s*(.*)/i);
-          if (match && match[1]) {
-            const urlStr = match[1].trim();
-            const lastPart = urlStr.split('/').pop() || '';
-            repoName = lastPart.replace(/\.git$/, '');
-          }
-        }
-      } catch {}
-    }
-
-    if (!repoName) {
-      repoName = path.basename(repoPath);
-    }
 
     const projectName = repoName
       .split(/[-_]/)
