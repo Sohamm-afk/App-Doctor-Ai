@@ -193,6 +193,25 @@ export class AnalysisService {
 
       // Skip analysis for large or non-code files
       try {
+        const relPathLower = relPath.toLowerCase();
+        const isNotExecutableSourceCode = 
+          relPathLower.endsWith('.d.ts') ||
+          relPathLower.startsWith('flow-typed/') || relPathLower.includes('/flow-typed/') ||
+          relPathLower.startsWith('node_modules/') || relPathLower.includes('/node_modules/') ||
+          relPathLower.startsWith('dist/') || relPathLower.includes('/dist/') ||
+          relPathLower.startsWith('build/') || relPathLower.includes('/build/') ||
+          relPathLower.startsWith('coverage/') || relPathLower.includes('/coverage/') ||
+          relPathLower.startsWith('vendor/') || relPathLower.includes('/vendor/') ||
+          relPathLower.startsWith('generated/') || relPathLower.includes('/generated/') ||
+          relPathLower.startsWith('__tests__/') || relPathLower.includes('/__tests__/') ||
+          relPathLower.startsWith('fixtures/') || relPathLower.includes('/fixtures/') ||
+          relPathLower.startsWith('examples/') || relPathLower.includes('/examples/') ||
+          relPathLower.startsWith('docs/') || relPathLower.includes('/docs/');
+
+        if (isNotExecutableSourceCode) {
+          continue;
+        }
+
         const stat = await fs.promises.stat(filePath);
         if (stat.size > 500 * 1024) continue; // Skip files > 500KB to ensure fast scanning
 
@@ -248,7 +267,50 @@ export class AnalysisService {
             const lineNum = i + 1;
 
             // 1. eval() RCE vulnerabilities
+            let isEvalCall = false;
+            let evalArg = '';
+            
             if (line.includes('eval(') && !line.includes('//') && !line.includes('/*')) {
+              const evalRegex = /\beval\s*\(([^)]+)\)/g;
+              let evalMatch;
+              while ((evalMatch = evalRegex.exec(line)) !== null) {
+                const beforeWord = line.substring(0, evalMatch.index).trim();
+                if (beforeWord.endsWith('.')) {
+                  continue;
+                }
+                const lineBefore = line.substring(0, evalMatch.index);
+                const doubleQuotesCount = (lineBefore.match(/"/g) || []).length;
+                const singleQuotesCount = (lineBefore.match(/'/g) || []).length;
+                const backticksCount = (lineBefore.match(/`/g) || []).length;
+                if (doubleQuotesCount % 2 !== 0 || singleQuotesCount % 2 !== 0 || backticksCount % 2 !== 0) {
+                  continue;
+                }
+
+                isEvalCall = true;
+                evalArg = evalMatch[1].trim();
+                break;
+              }
+            }
+
+            let isEvalDynamic = false;
+            if (isEvalCall && evalArg) {
+              const isQuoted = (evalArg.startsWith("'") && evalArg.endsWith("'")) || (evalArg.startsWith('"') && evalArg.endsWith('"')) || (evalArg.startsWith('`') && evalArg.endsWith('`'));
+              if (!isQuoted || evalArg.includes('+') || (evalArg.includes('`') && evalArg.includes('$' + '{'))) {
+                isEvalDynamic = true;
+              }
+            }
+
+            if (isEvalCall && isEvalDynamic) {
+              const lowerLine = line.toLowerCase();
+              const hasUserInput = lowerLine.includes('req.') || 
+                                   lowerLine.includes('input') || 
+                                   lowerLine.includes('param') || 
+                                   lowerLine.includes('url') || 
+                                   lowerLine.includes('path') || 
+                                   lowerLine.includes('arg') || 
+                                   lowerLine.includes('cmd');
+              const confidence: 'high' | 'medium' | 'low' = hasUserInput ? 'high' : (evalArg.includes('+') || evalArg.includes('$' + '{') ? 'medium' : 'low');
+
               securityFindings.push({
                 title: 'Dangerous eval() Usage',
                 severity: 'critical',
@@ -256,7 +318,7 @@ export class AnalysisService {
                 evidence: line.trim(),
                 file: relPath,
                 lineNumber: lineNum,
-                confidence: 'high',
+                confidence,
               });
             }
 
@@ -295,9 +357,9 @@ export class AnalysisService {
                 // Determine if called with dynamic or user-controlled input
                 const argMatch = line.match(/\(([^)]+)\)/);
                 if (argMatch && argMatch[1]) {
-                  const arg = argMatch[1].trim();
-                  const isQuoted = (arg.startsWith("'") && arg.endsWith("'")) || (arg.startsWith('"') && arg.endsWith('"'));
-                  if (!isQuoted || arg.includes('+') || (arg.includes('`') && arg.includes('${'))) {
+                  const firstArg = argMatch[1].split(',')[0].trim();
+                  const isQuoted = (firstArg.startsWith("'") && firstArg.endsWith("'")) || (firstArg.startsWith('"') && firstArg.endsWith('"')) || (firstArg.startsWith('`') && firstArg.endsWith('`'));
+                  if (!isQuoted || firstArg.includes('+') || (firstArg.includes('`') && firstArg.includes('$' + '{'))) {
                     isDynamic = true;
                   }
                 }
@@ -313,7 +375,12 @@ export class AnalysisService {
                                    lowerLine.includes('path') || 
                                    lowerLine.includes('arg') || 
                                    lowerLine.includes('cmd');
-              const confidence: 'high' | 'medium' = hasUserInput ? 'high' : 'medium';
+              
+              // Extract first argument of method call
+              const argMatch = line.match(/\(([^)]+)\)/);
+              const firstArg = argMatch && argMatch[1] ? argMatch[1].split(',')[0].trim() : '';
+              
+              const confidence: 'high' | 'medium' | 'low' = hasUserInput ? 'high' : (firstArg.includes('+') || firstArg.includes('$' + '{') ? 'medium' : 'low');
 
               securityFindings.push({
                 title: 'Dangerous child_process.exec() Usage',
