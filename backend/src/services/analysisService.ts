@@ -199,14 +199,9 @@ export class AnalysisService {
           relPathLower.startsWith('flow-typed/') || relPathLower.includes('/flow-typed/') ||
           relPathLower.startsWith('node_modules/') || relPathLower.includes('/node_modules/') ||
           relPathLower.startsWith('dist/') || relPathLower.includes('/dist/') ||
-          relPathLower.startsWith('build/') || relPathLower.includes('/build/') ||
           relPathLower.startsWith('coverage/') || relPathLower.includes('/coverage/') ||
           relPathLower.startsWith('vendor/') || relPathLower.includes('/vendor/') ||
-          relPathLower.startsWith('generated/') || relPathLower.includes('/generated/') ||
-          relPathLower.startsWith('__tests__/') || relPathLower.includes('/__tests__/') ||
-          relPathLower.startsWith('fixtures/') || relPathLower.includes('/fixtures/') ||
-          relPathLower.startsWith('examples/') || relPathLower.includes('/examples/') ||
-          relPathLower.startsWith('docs/') || relPathLower.includes('/docs/');
+          relPathLower.startsWith('generated/') || relPathLower.includes('/generated/');
 
         if (isNotExecutableSourceCode) {
           continue;
@@ -218,6 +213,26 @@ export class AnalysisService {
         // Analyze code contents for text extensions
         if (['.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.cs', '.php', '.go', '.rs', '.json', '.yml', '.yaml', '.xml'].includes(ext)) {
           const content = await fs.promises.readFile(filePath, 'utf8');
+
+          const isToolingOrDocFile = 
+            relPathLower.includes('.github/') ||
+            relPathLower.includes('scripts/') ||
+            relPathLower.includes('tools/') ||
+            relPathLower.includes('build/') ||
+            relPathLower.includes('compiler/') ||
+            relPathLower.includes('fixtures/') ||
+            relPathLower.includes('examples/') ||
+            relPathLower.includes('bench/') ||
+            relPathLower.includes('tests/') ||
+            relPathLower.includes('test/') ||
+            relPathLower.includes('docs/');
+
+          const addSecurityFinding = (finding: SecurityFinding) => {
+            if (isToolingOrDocFile) {
+              finding.severity = 'info';
+            }
+            securityFindings.push(finding);
+          };
 
           const cpBindings = new Set<string>();
           if (content.includes('child_process')) {
@@ -302,18 +317,18 @@ export class AnalysisService {
 
             if (isEvalCall && isEvalDynamic) {
               const lowerLine = line.toLowerCase();
-              const hasUserInput = lowerLine.includes('req.') || 
-                                   lowerLine.includes('input') || 
-                                   lowerLine.includes('param') || 
-                                   lowerLine.includes('url') || 
-                                   lowerLine.includes('path') || 
-                                   lowerLine.includes('arg') || 
-                                   lowerLine.includes('cmd');
+              const hasUserInput = lowerLine.includes('req.body') || 
+                                   lowerLine.includes('req.query') || 
+                                   lowerLine.includes('req.params') || 
+                                   lowerLine.includes('process.argv') || 
+                                   lowerLine.includes('process.env') || 
+                                   lowerLine.includes('stdin') ||
+                                   lowerLine.includes('userinput');
               const confidence: 'high' | 'medium' | 'low' = hasUserInput ? 'high' : (evalArg.includes('+') || evalArg.includes('$' + '{') ? 'medium' : 'low');
 
-              securityFindings.push({
+              addSecurityFinding({
                 title: 'Dangerous eval() Usage',
-                severity: 'critical',
+                severity: hasUserInput ? 'critical' : 'medium',
                 description: 'The eval() function executes arbitrary strings as code, presenting a severe Remote Code Execution (RCE) risk.',
                 evidence: line.trim(),
                 file: relPath,
@@ -324,7 +339,6 @@ export class AnalysisService {
 
             // 2. shell execution injection
             let isDangerousCPCall = false;
-            let isDynamic = false;
             if (content.includes('child_process') && !line.includes('//') && !line.includes('/*')) {
               const methods = ['exec', 'execSync', 'spawn', 'spawnSync', 'fork'];
               for (const method of methods) {
@@ -355,47 +369,52 @@ export class AnalysisService {
 
               if (isDangerousCPCall) {
                 // Determine if called with dynamic or user-controlled input
+                let isDynamicCall = false;
                 const argMatch = line.match(/\(([^)]+)\)/);
+                let firstArg = '';
                 if (argMatch && argMatch[1]) {
-                  const firstArg = argMatch[1].split(',')[0].trim();
+                  firstArg = argMatch[1].split(',')[0].trim();
                   const isQuoted = (firstArg.startsWith("'") && firstArg.endsWith("'")) || (firstArg.startsWith('"') && firstArg.endsWith('"')) || (firstArg.startsWith('`') && firstArg.endsWith('`'));
                   if (!isQuoted || firstArg.includes('+') || (firstArg.includes('`') && firstArg.includes('$' + '{'))) {
-                    isDynamic = true;
+                    isDynamicCall = true;
                   }
                 }
+
+                const lowerLine = line.toLowerCase();
+                const hasUserInput = lowerLine.includes('req.body') || 
+                                     lowerLine.includes('req.query') || 
+                                     lowerLine.includes('req.params') || 
+                                     lowerLine.includes('process.argv') || 
+                                     lowerLine.includes('process.env') || 
+                                     lowerLine.includes('stdin') ||
+                                     lowerLine.includes('userinput');
+
+                let severity: 'critical' | 'medium' | 'info' = 'info';
+                if (isDynamicCall) {
+                  severity = hasUserInput ? 'critical' : 'medium';
+                }
+
+                const confidence: 'high' | 'medium' | 'low' = hasUserInput ? 'high' : (isDynamicCall ? 'medium' : 'low');
+
+                addSecurityFinding({
+                  title: 'Dangerous child_process.exec() Usage',
+                  severity,
+                  description: severity === 'critical'
+                    ? 'Executing shell commands with user-controlled parameters is highly vulnerable to Remote Command Injection.'
+                    : severity === 'medium'
+                    ? 'Executing shell commands with dynamic parameters or variables is vulnerable to Command Injection if variables are not sanitized.'
+                    : 'Hardcoded shell command execution detected. Ensure commands and execution privileges are restricted.',
+                  evidence: line.trim(),
+                  file: relPath,
+                  lineNumber: lineNum,
+                  confidence,
+                });
               }
-            }
-
-            if (isDangerousCPCall && isDynamic) {
-              const lowerLine = line.toLowerCase();
-              const hasUserInput = lowerLine.includes('req.') || 
-                                   lowerLine.includes('input') || 
-                                   lowerLine.includes('param') || 
-                                   lowerLine.includes('url') || 
-                                   lowerLine.includes('path') || 
-                                   lowerLine.includes('arg') || 
-                                   lowerLine.includes('cmd');
-              
-              // Extract first argument of method call
-              const argMatch = line.match(/\(([^)]+)\)/);
-              const firstArg = argMatch && argMatch[1] ? argMatch[1].split(',')[0].trim() : '';
-              
-              const confidence: 'high' | 'medium' | 'low' = hasUserInput ? 'high' : (firstArg.includes('+') || firstArg.includes('$' + '{') ? 'medium' : 'low');
-
-              securityFindings.push({
-                title: 'Dangerous child_process.exec() Usage',
-                severity: 'critical',
-                description: 'Executing shell commands with dynamic string concatenation or variable arguments is highly vulnerable to Command Injection.',
-                evidence: line.trim(),
-                file: relPath,
-                lineNumber: lineNum,
-                confidence,
-              });
             }
 
             // 3. Permissive CORS configuration
             if ((line.includes("origin: '*'") || line.includes('origin: "*"') || line.includes('Access-Control-Allow-Origin: "*"') || line.includes("Access-Control-Allow-Origin: '*'")) && !line.includes('//')) {
-              securityFindings.push({
+              addSecurityFinding({
                 title: 'Permissive CORS Configuration',
                 severity: 'high',
                 description: 'CORS settings are configured to allow unrestricted cross-origin requests ("*"), creating potential security exploits.',
@@ -410,7 +429,7 @@ export class AnalysisService {
             const jwtSecretRegex = /(jwt[_-]?secret|session[_-]?secret|private[_-]?key|aws[_-]?secret|api[_-]?secret)\s*[:=]\s*['"`]([a-zA-Z0-9\/+=_\-!@#$]{8,})['"`]/i;
             const jwtMatch = line.match(jwtSecretRegex);
             if (jwtMatch && !line.includes('process.env') && !line.includes('//')) {
-              securityFindings.push({
+              addSecurityFinding({
                 title: 'Hardcoded Cryptographic Secret',
                 severity: 'critical',
                 description: 'Sensitive signature keys or environment secrets are hardcoded in the codebase, presenting major credential leakage risks.',
@@ -425,10 +444,18 @@ export class AnalysisService {
             const apiKeyRegex = /(api[_-]?key|client[_-]?secret|stripe[_-]?key|sendgrid[_-]?key)\s*[:=]\s*['"`]([a-zA-Z0-9_-]{16,})['"`]/i;
             const keyMatch = line.match(apiKeyRegex);
             if (keyMatch && !line.includes('process.env') && !line.includes('//')) {
-              securityFindings.push({
-                title: 'Hardcoded API Key Credential',
-                severity: 'high',
-                description: 'Third-party API key credential was found hardcoded, making it vulnerable to source leak compromise.',
+              const matchedLine = line.toLowerCase();
+              const isAlgoliaSearchKey = matchedLine.includes('algolia') && (matchedLine.includes('search') || matchedLine.includes('public') || matchedLine.includes('app_id'));
+              
+              const severity = isAlgoliaSearchKey ? 'info' : 'high';
+              const description = isAlgoliaSearchKey
+                ? 'Public or search-only Algolia API key detected. This is a public key intended for frontend use and does not present a credential leakage compromise risk.'
+                : 'Third-party API key credential was found hardcoded, making it vulnerable to source leak compromise.';
+
+              addSecurityFinding({
+                title: isAlgoliaSearchKey ? 'Public Algolia Search Key' : 'Hardcoded API Key Credential',
+                severity,
+                description,
                 evidence: line.trim(),
                 file: relPath,
                 lineNumber: lineNum,
@@ -440,7 +467,7 @@ export class AnalysisService {
             const passwordRegex = /(db[_-]?password|password|passphrase|mysql[_-]?password)\s*[:=]\s*['"`]([a-zA-Z0-9_\-!@#$]{5,})['"`]/i;
             const passMatch = line.match(passwordRegex);
             if (passMatch && !line.includes('process.env') && !line.includes('//')) {
-              securityFindings.push({
+              addSecurityFinding({
                 title: 'Hardcoded Plaintext Password',
                 severity: 'critical',
                 description: 'Database or user credential password found in plaintext inside repository source code.',
@@ -453,7 +480,7 @@ export class AnalysisService {
 
             // 7. Debug configurations
             if (ext === '.py' && line.match(/^\s*DEBUG\s*=\s*True\b/i)) {
-              securityFindings.push({
+              addSecurityFinding({
                 title: 'Debug Mode Enabled in Python Configuration',
                 severity: 'high',
                 description: 'Python debug configurations (e.g. Django DEBUG) are set to True, which exposes detailed system stack traces to users.',
