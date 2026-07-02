@@ -82,6 +82,19 @@ export class AnalysisService {
     const performanceFindings: PerformanceFinding[] = [];
     const deploymentFindings: DeploymentFinding[] = [];
 
+    let projectType: 'Frontend' | 'Backend' | 'Full Stack' | 'Library' | 'CLI' | 'Unknown' = 'Unknown';
+    if (techInfo.frontend && techInfo.backend) {
+      projectType = 'Full Stack';
+    } else if (techInfo.frontend) {
+      projectType = 'Frontend';
+    } else if (techInfo.backend) {
+      projectType = 'Backend';
+    } else if (scanResult.importantFiles.some((f) => f.toLowerCase().includes('cli') || f.includes('bin/'))) {
+      projectType = 'CLI';
+    } else {
+      projectType = 'Library';
+    }
+
     // State indicators
     let hasHelmet = false;
     let hasRateLimit = false;
@@ -304,7 +317,8 @@ export class AnalysisService {
 
     // Server-wide heuristic warnings
     const serverActive = hasExpress || hasNest || hasDjango || hasFlask || hasFastApi || hasSpring || techInfo.backend;
-    if (serverActive) {
+    const isLibraryOrCli = projectType === 'Library' || projectType === 'CLI';
+    if (serverActive && !isLibraryOrCli) {
       if (!hasHelmet && (hasExpress || hasNest)) {
         securityFindings.push({
           title: 'Missing Security Headers (Helmet)',
@@ -516,18 +530,7 @@ export class AnalysisService {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
 
-    let projectType: 'Frontend' | 'Backend' | 'Full Stack' | 'Library' | 'CLI' | 'Unknown' = 'Unknown';
-    if (techInfo.frontend && techInfo.backend) {
-      projectType = 'Full Stack';
-    } else if (techInfo.frontend) {
-      projectType = 'Frontend';
-    } else if (techInfo.backend) {
-      projectType = 'Backend';
-    } else if (scanResult.importantFiles.some((f) => f.toLowerCase().includes('cli') || f.includes('bin/'))) {
-      projectType = 'CLI';
-    } else {
-      projectType = 'Library';
-    }
+
 
     const nodes: any[] = [];
     const edges: any[] = [];
