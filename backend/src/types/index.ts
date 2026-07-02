@@ -81,6 +81,12 @@ export interface LaunchScoreBreakdown {
   performance: number;
   quality: number;
   cloud: number;
+  breakdown?: {
+    security: number;
+    performance: number;
+    quality: number;
+    cloud: number;
+  };
 }
 
 export interface AnalysisResponse {

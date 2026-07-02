@@ -487,6 +487,8 @@ export class AnalysisService {
     // Calculate Dynamic deterministic score
     const score = this.calculateScore(
       securityFindings,
+      qualityFindings,
+      performanceFindings,
       hasReadme,
       hasTests,
       hasDockerfile || hasDockerCompose,
@@ -509,21 +511,15 @@ export class AnalysisService {
    */
   private static calculateScore(
     security: SecurityFinding[],
+    quality: QualityFinding[],
+    performance: PerformanceFinding[],
     hasReadme: boolean,
     hasTests: boolean,
     hasDocker: boolean,
     hasCicd: boolean,
     fileCount: number
   ): LaunchScoreBreakdown {
-    let overall = 100;
-
-    // 1. Rewards
-    if (hasReadme) overall += 2;
-    if (hasTests) overall += 8;
-    if (hasDocker) overall += 5;
-    if (hasCicd) overall += 5;
-
-    // 2. Penalties
+    // 1. Security Score
     let securityPenalty = 0;
     security.forEach((s) => {
       if (s.severity === 'critical') securityPenalty += 15;
@@ -531,22 +527,46 @@ export class AnalysisService {
       else if (s.severity === 'medium') securityPenalty += 6;
       else if (s.severity === 'low') securityPenalty += 4;
     });
+    const securityScore = Math.max(0, Math.min(100, 100 - securityPenalty));
 
-    overall -= securityPenalty;
+    // 2. Performance Score
+    let performancePenalty = 0;
+    performance.forEach((p) => {
+      if (p.severity === 'high') performancePenalty += 10;
+      else if (p.severity === 'medium') performancePenalty += 6;
+      else if (p.severity === 'low') performancePenalty += 4;
+    });
+    if (!hasTests) {
+      performancePenalty += 10;
+    }
+    const performanceScore = Math.max(0, Math.min(100, 100 - performancePenalty));
 
-    // Bound check
-    if (overall > 100) overall = 100;
-    if (overall < 0) overall = 0;
+    // 3. Quality Score
+    let qualityPenalty = 0;
+    quality.forEach((q) => {
+      if (q.severity === 'high') qualityPenalty += 10;
+      else if (q.severity === 'medium') qualityPenalty += 6;
+      else if (q.severity === 'low') qualityPenalty += 4;
+    });
+    if (!hasReadme) qualityPenalty += 20;
+    if (!hasTests) qualityPenalty += 15;
+    const qualityScore = Math.max(0, Math.min(100, 100 - qualityPenalty));
 
-    // Unique offset using file trait
-    const offset = fileCount % 5;
-    overall = Math.max(0, Math.min(100, overall - offset));
+    // 4. Cloud Score
+    let cloudScore = 100;
+    if (!hasDocker) cloudScore -= 25;
+    if (!hasCicd) cloudScore -= 10;
+    cloudScore = Math.max(0, Math.min(100, cloudScore));
 
-    // Distribute breakdown
-    const securityScore = Math.max(0, 100 - securityPenalty * 3);
-    const performanceScore = hasTests ? 92 : 80;
-    const qualityScore = Math.max(0, 100 - (hasReadme ? 0 : 20) - (hasTests ? 0 : 30));
-    const cloudScore = hasDocker ? 95 : 75;
+    // 5. Overall Score (Derived from component scores)
+    const overall = Math.round((securityScore + performanceScore + qualityScore + cloudScore) / 4);
+
+    // Logging for verification
+    console.log(`Security Score: ${securityScore}`);
+    console.log(`Performance Score: ${performanceScore}`);
+    console.log(`Quality Score: ${qualityScore}`);
+    console.log(`Cloud Score: ${cloudScore}`);
+    console.log(`Overall Score: ${overall}`);
 
     return {
       overall,
@@ -554,6 +574,12 @@ export class AnalysisService {
       performance: performanceScore,
       quality: qualityScore,
       cloud: cloudScore,
+      breakdown: {
+        security: securityScore,
+        performance: performanceScore,
+        quality: qualityScore,
+        cloud: cloudScore
+      }
     };
   }
 }
