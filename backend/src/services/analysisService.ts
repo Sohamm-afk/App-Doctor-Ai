@@ -78,6 +78,7 @@ export class AnalysisService {
     techInfo: TechnologyInfo
   ): Promise<Omit<AnalysisResponse, 'metadata' | 'technology'>> {
     const securityFindings: SecurityFinding[] = [];
+    const safeCPFindingsList: SecurityFinding[] = [];
     const qualityFindings: QualityFinding[] = [];
     const performanceFindings: PerformanceFinding[] = [];
     const deploymentFindings: DeploymentFinding[] = [];
@@ -227,7 +228,12 @@ export class AnalysisService {
             relPathLower.includes('test/') ||
             relPathLower.includes('docs/');
 
+          const emittedForFile = new Set<string>();
           const addSecurityFinding = (finding: SecurityFinding) => {
+            if (emittedForFile.has(finding.title)) {
+              return;
+            }
+            emittedForFile.add(finding.title);
             if (isToolingOrDocFile) {
               finding.severity = 'info';
             }
@@ -396,19 +402,41 @@ export class AnalysisService {
 
                 const confidence: 'high' | 'medium' | 'low' = hasUserInput ? 'high' : (isDynamicCall ? 'medium' : 'low');
 
-                addSecurityFinding({
-                  title: 'Dangerous child_process.exec() Usage',
-                  severity,
-                  description: severity === 'critical'
-                    ? 'Executing shell commands with user-controlled parameters is highly vulnerable to Remote Command Injection.'
-                    : severity === 'medium'
-                    ? 'Executing shell commands with dynamic parameters or variables is vulnerable to Command Injection if variables are not sanitized.'
-                    : 'Hardcoded shell command execution detected. Ensure commands and execution privileges are restricted.',
-                  evidence: line.trim(),
-                  file: relPath,
-                  lineNumber: lineNum,
-                  confidence,
-                });
+                // 4. Ignore: scripts/, .github/, compiler/scripts/, fixtures/, bench/, tests/ unless user-controlled input reaches child_process
+                const isIgnoredFolderForSafeCP = 
+                  relPathLower.includes('.github/') ||
+                  relPathLower.includes('scripts/') ||
+                  relPathLower.includes('fixtures/') ||
+                  relPathLower.includes('bench/') ||
+                  relPathLower.includes('tests/') ||
+                  relPathLower.includes('test/');
+
+                if (isIgnoredFolderForSafeCP && severity !== 'critical') {
+                  // Skip reporting this finding!
+                } else if (severity === 'info') {
+                  // Do NOT create individual findings for hardcoded build commands, collect them instead
+                  safeCPFindingsList.push({
+                    title: 'Dangerous child_process.exec() Usage',
+                    severity: 'info',
+                    description: 'Hardcoded shell command execution detected. Ensure commands and execution privileges are restricted.',
+                    evidence: line.trim(),
+                    file: relPath,
+                    lineNumber: lineNum,
+                    confidence: 'low',
+                  });
+                } else {
+                  addSecurityFinding({
+                    title: 'Dangerous child_process.exec() Usage',
+                    severity,
+                    description: severity === 'critical'
+                      ? 'Executing shell commands with user-controlled parameters is highly vulnerable to Remote Command Injection.'
+                      : 'Executing shell commands with dynamic parameters or variables is vulnerable to Command Injection if variables are not sanitized.',
+                    evidence: line.trim(),
+                    file: relPath,
+                    lineNumber: lineNum,
+                    confidence,
+                  });
+                }
               }
             }
 
@@ -522,6 +550,31 @@ export class AnalysisService {
         }
       } catch (err) {
         // Skip unreadable files
+      }
+    }
+
+    // Process safe CP findings
+    if (safeCPFindingsList.length > 0) {
+      if (safeCPFindingsList.length <= 5) {
+        const emitted = new Set<string>();
+        safeCPFindingsList.forEach((f) => {
+          const key = `${f.file}:${f.title}`;
+          if (!emitted.has(key)) {
+            emitted.add(key);
+            securityFindings.push(f);
+          }
+        });
+      } else {
+        // Replace with ONE informational summary
+        securityFindings.push({
+          title: 'Extensive child_process Usage in Build Tooling',
+          severity: 'info',
+          description: `Repository uses child_process extensively for build tooling (${safeCPFindingsList.length} occurrences). No dangerous user-controlled command execution detected.`,
+          evidence: 'Multiple execSync, spawn, or spawnSync calls found in scripts and tooling files.',
+          file: 'package.json',
+          lineNumber: 1,
+          confidence: 'low',
+        });
       }
     }
 
