@@ -31,18 +31,60 @@ export class DetectionService {
     if (ext['.php']) languages.push('PHP');
     if (ext['.cpp'] || ext['.cc'] || ext['.cxx'] || ext['.h'] || ext['.hpp']) languages.push('C++');
 
-    // 2. Read root package.json dependencies only
-    let packageJsonData: any = {};
-    if (fs.existsSync(path.join(repoPath, 'package.json'))) {
+    // Helper to recursively find package.json files
+    const findPackageJsons = (dir: string): string[] => {
+      const results: string[] = [];
+      if (!fs.existsSync(dir)) return results;
       try {
-        const fileContent = await fs.promises.readFile(path.join(repoPath, 'package.json'), 'utf8');
-        packageJsonData = JSON.parse(fileContent);
-      } catch {
-        // Suppress package.json reading exceptions
-      }
-    }
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const name = entry.name;
+          const lowerName = name.toLowerCase();
+          if (entry.isDirectory()) {
+            if (
+              lowerName === 'node_modules' ||
+              lowerName === 'docs' ||
+              lowerName === 'examples' ||
+              lowerName === 'tests' ||
+              lowerName === 'coverage' ||
+              lowerName === 'dist' ||
+              lowerName === 'build' ||
+              lowerName === '.git'
+            ) {
+              continue;
+            }
+            results.push(...findPackageJsons(path.join(dir, name)));
+          } else if (entry.isFile() && lowerName === 'package.json') {
+            results.push(path.join(dir, name));
+          }
+        }
+      } catch {}
+      return results;
+    };
 
-    const deps = packageJsonData.dependencies || {};
+    // 2. Read package.json dependencies recursively and merge them
+    const deps: Record<string, string> = {};
+    let rootPackageName = '';
+    const packageFiles = findPackageJsons(repoPath);
+
+    for (const pkgFile of packageFiles) {
+      try {
+        const fileContent = fs.readFileSync(pkgFile, 'utf8');
+        const pkgData = JSON.parse(fileContent);
+
+        // Track root package name for library matching
+        if (path.relative(repoPath, pkgFile) === 'package.json') {
+          if (pkgData.name) {
+            rootPackageName = pkgData.name.toLowerCase();
+          }
+        }
+
+        if (pkgData.dependencies) Object.assign(deps, pkgData.dependencies);
+        if (pkgData.devDependencies) Object.assign(deps, pkgData.devDependencies);
+        if (pkgData.peerDependencies) Object.assign(deps, pkgData.peerDependencies);
+        if (pkgData.optionalDependencies) Object.assign(deps, pkgData.optionalDependencies);
+      } catch {}
+    }
 
     // 2a. Frontend frameworks detection
     if (deps['react'] || deps['react-dom']) frontend = 'React';
@@ -61,6 +103,16 @@ export class DetectionService {
     // 2b. JavaScript backend frameworks
     if (deps['express']) backend = 'Express';
     if (deps['@nestjs/core']) backend = 'NestJS';
+
+    // Prevent false positives for libraries themselves
+    if (rootPackageName === 'axios') {
+      frontend = undefined;
+      backend = undefined;
+    }
+    if (rootPackageName === 'express') {
+      frontend = undefined;
+      backend = undefined;
+    }
 
     // 3. Python backend framework detection from root configurations only
     let pyDeps = '';
