@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Send, Sparkles, User, Lightbulb, ShieldAlert, Cpu } from 'lucide-react';
-import { mockService } from '@/services/mock';
+import axios from 'axios';
 import { Button } from '@/components/ui/Button';
 import { InformationCard } from '@/components/cards/Cards';
 import { useToast } from '@/components/ui/Toast';
@@ -25,21 +25,83 @@ export default function AICTOPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [typing, setTyping] = useState(false);
+  const [scanResult, setScanResult] = useState<any>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const { error } = useToast();
 
   useEffect(() => {
-    if (!id) return;
-    mockService.getChatSession(id)
-      .then((session) => {
-        setMessages(session.messages);
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    const localScanData = localStorage.getItem(`scan_result_${id}`);
+    if (localScanData) {
+      const parsed = JSON.parse(localScanData);
+      setScanResult(parsed);
+
+      const savedReview = localStorage.getItem(`aicto_review_${id}`);
+      if (savedReview) {
+        setMessages([
+          {
+            id: 'welcome',
+            role: 'assistant',
+            content: savedReview,
+            timestamp: new Date().toISOString()
+          }
+        ]);
         setLoading(false);
-      })
-      .catch((err) => {
-        error('Failed to load chat session', err instanceof Error ? err.message : String(err));
-        setLoading(false);
-      });
-  }, [id, error]);
+      } else {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+        axios.post(`${apiBaseUrl}/api/ai/review`, { scanResult: parsed })
+          .then((res) => {
+            const review = res.data?.review;
+            if (review) {
+              localStorage.setItem(`aicto_review_${id}`, review);
+              setMessages([
+                {
+                  id: 'welcome',
+                  role: 'assistant',
+                  content: review,
+                  timestamp: new Date().toISOString()
+                }
+              ]);
+            } else {
+              setMessages([
+                {
+                  id: 'welcome',
+                  role: 'assistant',
+                  content: 'AI CTO consultation has not been generated yet.',
+                  timestamp: new Date().toISOString()
+                }
+              ]);
+            }
+            setLoading(false);
+          })
+          .catch((err) => {
+            console.error('Failed to generate AI CTO review:', err);
+            setMessages([
+              {
+                id: 'welcome',
+                role: 'assistant',
+                content: 'AI CTO consultation has not been generated yet.',
+                timestamp: new Date().toISOString()
+              }
+            ]);
+            setLoading(false);
+          });
+      }
+    } else {
+      setMessages([
+        {
+          id: 'welcome',
+          role: 'assistant',
+          content: 'AI CTO consultation has not been generated yet.',
+          timestamp: new Date().toISOString()
+        }
+      ]);
+      setLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     if (bottomRef.current) {
@@ -49,7 +111,7 @@ export default function AICTOPage() {
 
   const handleSend = async (textToSend?: string) => {
     const text = textToSend ?? input;
-    if (!text.trim()) return;
+    if (!text.trim() || !scanResult) return;
 
     if (!textToSend) setInput('');
 
@@ -60,12 +122,25 @@ export default function AICTOPage() {
       timestamp: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setTyping(true);
 
     try {
-      const response = await mockService.sendChatMessage('session-001', text);
-      setMessages((prev) => [...prev, response]);
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+      const { data } = await axios.post(`${apiBaseUrl}/api/ai/chat`, {
+        message: text,
+        history: newMessages.map(m => ({ role: m.role, content: m.content })),
+        scanResult
+      });
+
+      const botMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: data.reply || 'No response returned from AI CTO.',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, botMessage]);
     } catch (e) {
       error('Failed to send message', e instanceof Error ? e.message : String(e));
       console.error(e);
@@ -183,14 +258,14 @@ export default function AICTOPage() {
       <div className="w-full lg:w-80 flex flex-col gap-4 flex-shrink-0">
         <InformationCard
           title="CTO Directives"
-          description="Your Launch Score is currently 74/100. Let's fix the 2 critical SQL Injection vulnerabilities in search handlers before production deployment."
+          description={`Your Launch Score is currently ${scanResult?.launch_score?.overall ?? 0}/100. ${(scanResult?.security_findings || []).filter((f: any) => f.severity === 'critical').length > 0 ? `Let's fix the ${(scanResult?.security_findings || []).filter((f: any) => f.severity === 'critical').length} critical security issues detected in your repository before production deployment.` : 'No critical security issues were detected in your repository.'}`}
           variant="warning"
           icon={<ShieldAlert className="text-amber-500" size={18} />}
         />
 
         <InformationCard
           title="System Constraints"
-          description="Throughput metrics show a minor latency spike during payment gateway connections. Enable Redis caching for high load operations."
+          description="Autoscaling parameters, memory/CPU limits, and cache connection variables are Not Detected in the repository files."
           variant="info"
           icon={<Cpu className="text-blue-500" size={18} />}
         />
@@ -201,7 +276,7 @@ export default function AICTOPage() {
             Quick Recommendation
           </h4>
           <p className="text-caption text-text-muted">
-            Run the <code>fixes</code> directive or click 'One-Click Fixes' in the sidebar to review the automated pull request code patches.
+            Review the static security findings or click 'One-Click Fixes' in the sidebar to generate AI remediations for the detected findings.
           </p>
         </div>
       </div>
