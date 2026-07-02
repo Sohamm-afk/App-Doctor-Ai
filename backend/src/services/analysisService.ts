@@ -480,8 +480,38 @@ export class AnalysisService {
       archType = 'Monorepo / Microservices Federation';
     }
 
-    // Build dynamic ReactFlow Architecture Graph based on project type classification
-    const projectName = path.basename(repoPath)
+    // Try to extract clean repository name from package.json or git config to avoid UUID temp paths
+    let repoName = '';
+    try {
+      const pkgPath = path.join(repoPath, 'package.json');
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        if (pkg.name) {
+          repoName = pkg.name.split('/').pop() || pkg.name;
+        }
+      }
+    } catch {}
+
+    if (!repoName) {
+      try {
+        const gitConfigPath = path.join(repoPath, '.git', 'config');
+        if (fs.existsSync(gitConfigPath)) {
+          const config = fs.readFileSync(gitConfigPath, 'utf8');
+          const match = config.match(/url\s*=\s*(.*)/i);
+          if (match && match[1]) {
+            const urlStr = match[1].trim();
+            const lastPart = urlStr.split('/').pop() || '';
+            repoName = lastPart.replace(/\.git$/, '');
+          }
+        }
+      } catch {}
+    }
+
+    if (!repoName) {
+      repoName = path.basename(repoPath);
+    }
+
+    const projectName = repoName
       .split(/[-_]/)
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
