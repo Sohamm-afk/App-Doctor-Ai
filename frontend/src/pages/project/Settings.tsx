@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Settings, Save, ShieldAlert, Trash2 } from 'lucide-react';
-import { mockService } from '@/services/mock';
 import { Input, Select, Checkbox, Slider } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
@@ -24,24 +23,38 @@ export default function SettingsPage() {
   const [notifications, setNotifications] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
-    mockService.getProject(id)
-      .then((data) => {
-        if (data) {
-          setProject(data);
-          setName(data.name);
-          setDescription(data.description);
-          setRepoUrl(data.repositoryUrl);
-          setProvider(data.cloudProvider || 'aws');
-          setTeamSize(data.teamSize || 3);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        error('Failed to load settings', err instanceof Error ? err.message : String(err));
-        setLoading(false);
-      });
-  }, [id, error]);
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    const localScanData = localStorage.getItem(`scan_result_${id}`);
+    if (localScanData) {
+      const scanData = JSON.parse(localScanData);
+      const proj: Project = {
+        id,
+        name: scanData.metadata?.project_name || 'Unnamed Project',
+        description: `Real-time repository analysis for ${scanData.metadata?.repository_name}.`,
+        repositoryUrl: scanData.metadata?.repository_name ? `https://github.com/${scanData.metadata.repository_name}` : '',
+        language: (((scanData.metadata?.languages || [])[0] || 'unknown').toLowerCase() as any),
+        framework: scanData.metadata?.frontend || scanData.metadata?.backend || 'Other',
+        status: 'active',
+        launchScore: scanData.launch_score?.overall ?? 74,
+        lastScannedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        cloudProvider: 'other',
+        teamSize: 1,
+        tags: scanData.metadata?.languages || [],
+      };
+      setProject(proj);
+      setName(proj.name);
+      setDescription(proj.description);
+      setRepoUrl(proj.repositoryUrl);
+      setProvider(proj.cloudProvider || 'aws');
+      setTeamSize(proj.teamSize || 3);
+    }
+    setLoading(false);
+  }, [id]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +69,17 @@ export default function SettingsPage() {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
         <span className="text-body-sm text-text-muted">Loading settings…</span>
+      </div>
+    );
+  }
+
+  if (!loading && !project) {
+    return (
+      <div className="card p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+        <h2 className="text-h2 font-heading text-text mb-2 font-bold">No analysis available.</h2>
+        <p className="text-body-sm text-text-muted max-w-sm">
+          Please onboard and run a scan on this repository to view settings.
+        </p>
       </div>
     );
   }
