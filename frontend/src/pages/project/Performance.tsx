@@ -5,7 +5,6 @@ import { Zap, Activity, Clock, Server, Folder, File, Code, HelpCircle } from 'lu
 import { MetricCard } from '@/components/cards/Cards';
 import { DataTable } from '@/components/common/Table';
 import { Badge } from '@/components/ui/Badge';
-import { mockService } from '@/services/mock';
 import { cn, formatBytes } from '@/utils';
 import { useToast } from '@/components/ui/Toast';
 import type { PerformanceMetric, TableColumn } from '@/types';
