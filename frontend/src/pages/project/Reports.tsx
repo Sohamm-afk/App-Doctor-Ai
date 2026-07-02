@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FileText, Plus, Download, RefreshCw, FileCode, CheckCircle } from 'lucide-react';
-import { mockService } from '@/services/mock';
 import { DataTable } from '@/components/common/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -24,17 +23,36 @@ export default function ReportsPage() {
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
-    mockService.getReports(id)
-      .then((data) => {
-        setReports(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        error('Failed to load reports', err instanceof Error ? err.message : String(err));
-        setLoading(false);
-      });
-  }, [id, error]);
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    const localScanData = localStorage.getItem(`scan_result_${id}`);
+    if (localScanData) {
+      const listStr = localStorage.getItem(`reports_list_${id}`);
+      if (listStr) {
+        setReports(JSON.parse(listStr));
+      } else {
+        const defaultReports: Report[] = [
+          {
+            id: 'rep-1',
+            projectId: id,
+            title: 'Static Code Quality Audit',
+            type: 'full-audit',
+            status: 'ready',
+            format: 'pdf',
+            size: 1024 * 124,
+            createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+          }
+        ];
+        localStorage.setItem(`reports_list_${id}`, JSON.stringify(defaultReports));
+        setReports(defaultReports);
+      }
+    } else {
+      setReports([]);
+    }
+    setLoading(false);
+  }, [id]);
 
   const handleGenerate = () => {
     if (!id) return;
