@@ -1,12 +1,29 @@
 import simpleGit from 'simple-git';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
 import { deleteDirectory } from '../utils/fileSystem';
 
 // Disable terminal prompting to fail fast on private repositories
 process.env.GIT_TERMINAL_PROMPT = '0';
+process.env.GIT_ASKPASS = 'echo';
+
+// Helper to determine the short temporary directory path
+function getTempDir(): string {
+  const isNested = config.TEMP_DIR.includes('backend') || config.TEMP_DIR.includes('Made In india hack');
+  if (isNested) {
+    if (process.platform === 'win32') {
+      return 'C:\\temp\\AppDoctor';
+    } else {
+      return path.join(os.tmpdir(), 'appdoctor');
+    }
+  }
+  return config.TEMP_DIR;
+}
+
+const TEMP_DIR = getTempDir();
 
 export class GitService {
   /**
@@ -32,25 +49,25 @@ export class GitService {
    */
   public static async cloneRepository(githubUrl: string): Promise<{ localPath: string; repoName: string }> {
     if (!this.isValidGitHubUrl(githubUrl)) {
-      const error: any = new Error('Invalid GitHub URL format');
+      const error: any = new Error('Invalid GitHub URL format. Please provide a valid public GitHub repository URL.');
       error.status = 400;
       throw error;
     }
 
     const repoName = this.getRepositoryName(githubUrl);
     const uniqueId = uuidv4();
-    const localPath = path.join(config.TEMP_DIR, uniqueId);
+    const localPath = path.join(TEMP_DIR, uniqueId);
 
     // Clean up old temporary repositories to save disk space
     try {
-      if (fs.existsSync(config.TEMP_DIR)) {
-        const folders = await fs.promises.readdir(config.TEMP_DIR);
+      if (fs.existsSync(TEMP_DIR)) {
+        const folders = await fs.promises.readdir(TEMP_DIR);
         for (const folder of folders) {
-          const folderPath = path.join(config.TEMP_DIR, folder);
+          const folderPath = path.join(TEMP_DIR, folder);
           await deleteDirectory(folderPath);
         }
       } else {
-        await fs.promises.mkdir(config.TEMP_DIR, { recursive: true });
+        await fs.promises.mkdir(TEMP_DIR, { recursive: true });
       }
     } catch (err) {
       console.warn('[GitService] Pre-clone cleanup warning:', err);
@@ -58,9 +75,12 @@ export class GitService {
 
     const git = simpleGit();
 
-    // Setup Git Clone with depth 1 for performance and timeout handler
+    // Setup Git Clone with depth 1, single branch, blob filter, and enable long paths config
     const clonePromise = git.clone(githubUrl, localPath, [
-      '--depth=1'
+      '--depth=1',
+      '--filter=blob:none',
+      '--single-branch',
+      '-c', 'core.longpaths=true'
     ]);
 
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -75,11 +95,19 @@ export class GitService {
       await Promise.race([clonePromise, timeoutPromise]);
       return { localPath, repoName };
     } catch (err: any) {
+      console.error(`[GitService] Clone failed: ${err.message || err}`);
+
       // Clean up in case of failure
-      await deleteDirectory(localPath);
+      try {
+        await deleteDirectory(localPath);
+      } catch (cleanupErr) {
+        console.error('[GitService] Cleanup failed:', cleanupErr);
+      }
 
       if (err.status === 408) {
-        throw err;
+        const timeoutErr: any = new Error('Repository clone operation timed out. The repository might be too large or your connection is slow.');
+        timeoutErr.status = 408;
+        throw timeoutErr;
       }
 
       const errorMsg = err.message || '';
@@ -98,8 +126,28 @@ export class GitService {
       ) {
         error.message = 'Repository not found. Please verify the URL.';
         error.status = 404;
+      } else if (
+        errorMsg.includes('Filename too long') || 
+        errorMsg.includes('unable to checkout working tree')
+      ) {
+        error.message = 'This repository contains file paths that exceed the maximum path length supported by the current operating system. Try enabling Windows Long Paths, using a shorter temporary directory, or analyzing the ZIP version of the repository.';
+        error.status = 422;
+      } else if (
+        errorMsg.includes('Could not resolve host') || 
+        errorMsg.includes('Failed to connect') || 
+        errorMsg.includes('fatal: unable to access')
+      ) {
+        error.message = 'Network connection failed. Please verify your internet connection and try again.';
+        error.status = 503;
+      } else if (
+        errorMsg.includes('spawn git ENOENT') || 
+        errorMsg.includes('git is not recognized') || 
+        errorMsg.includes('ENOENT')
+      ) {
+        error.message = 'Git CLI is not installed or not found on the system path of the server.';
+        error.status = 500;
       } else {
-        error.message = `Failed to clone repository: ${errorMsg}`;
+        error.message = 'An unexpected error occurred while cloning the repository. Please try again.';
         error.status = 500;
       }
 
