@@ -31,52 +31,47 @@ export class DetectionService {
     if (ext['.php']) languages.push('PHP');
     if (ext['.cpp'] || ext['.cc'] || ext['.cxx'] || ext['.h'] || ext['.hpp']) languages.push('C++');
 
-    // 2. Read package.json dependencies
+    // 2. Read root package.json dependencies only
     let packageJsonData: any = {};
-    const packageJsonPath = scanResult.importantFiles.find((f) => f.endsWith('package.json'));
-    if (packageJsonPath) {
+    if (fs.existsSync(path.join(repoPath, 'package.json'))) {
       try {
-        const fileContent = await fs.promises.readFile(path.join(repoPath, packageJsonPath), 'utf8');
+        const fileContent = await fs.promises.readFile(path.join(repoPath, 'package.json'), 'utf8');
         packageJsonData = JSON.parse(fileContent);
       } catch {
         // Suppress package.json reading exceptions
       }
     }
 
-    const deps = {
-      ...(packageJsonData.dependencies || {}),
-      ...(packageJsonData.devDependencies || {}),
-    };
+    const deps = packageJsonData.dependencies || {};
 
     // 2a. Frontend frameworks detection
     if (deps['react'] || deps['react-dom']) frontend = 'React';
-    if (deps['next']) frontend = 'Next.js';
+    if (deps['next']) {
+      frontend = 'Next.js';
+      backend = 'Next.js';
+    }
     if (deps['vue']) frontend = 'Vue';
     if (deps['@angular/core']) frontend = 'Angular';
     if (deps['svelte'] || deps['@sveltejs/kit']) frontend = 'Svelte';
-    if (deps['nuxt']) frontend = 'Nuxt';
-
-    if (!frontend) {
-      if (scanResult.importantFiles.some((f) => f.includes('next.config'))) frontend = 'Next.js';
-      else if (scanResult.importantFiles.some((f) => f.includes('nuxt.config'))) frontend = 'Nuxt';
+    if (deps['nuxt']) {
+      frontend = 'Nuxt';
+      backend = 'Nuxt';
     }
 
     // 2b. JavaScript backend frameworks
     if (deps['express']) backend = 'Express';
     if (deps['@nestjs/core']) backend = 'NestJS';
 
-    // 3. Python backend framework detection
+    // 3. Python backend framework detection from root configurations only
     let pyDeps = '';
-    const reqsTxtPath = scanResult.importantFiles.find((f) => f.endsWith('requirements.txt'));
-    if (reqsTxtPath) {
+    if (fs.existsSync(path.join(repoPath, 'requirements.txt'))) {
       try {
-        pyDeps = await fs.promises.readFile(path.join(repoPath, reqsTxtPath), 'utf8');
+        pyDeps = await fs.promises.readFile(path.join(repoPath, 'requirements.txt'), 'utf8');
       } catch {}
     }
-    const pyProjectTomlPath = scanResult.importantFiles.find((f) => f.endsWith('pyproject.toml'));
-    if (pyProjectTomlPath) {
+    if (fs.existsSync(path.join(repoPath, 'pyproject.toml'))) {
       try {
-        pyDeps += '\n' + (await fs.promises.readFile(path.join(repoPath, pyProjectTomlPath), 'utf8'));
+        pyDeps += '\n' + (await fs.promises.readFile(path.join(repoPath, 'pyproject.toml'), 'utf8'));
       } catch {}
     }
 
@@ -188,7 +183,7 @@ export class DetectionService {
       packageManager = 'pnpm';
     } else if (scanResult.importantFiles.some((f) => f.endsWith('requirements.txt') || f.endsWith('pyproject.toml') || f.endsWith('Pipfile'))) {
       packageManager = 'pip';
-    } else if (packageJsonPath) {
+    } else if (scanResult.importantFiles.some((f) => f.endsWith('package.json'))) {
       packageManager = 'npm'; // fallback logic for JS
     }
 

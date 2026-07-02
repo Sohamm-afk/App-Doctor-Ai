@@ -32,7 +32,10 @@ export class MetadataService {
       projectType = 'Frontend';
     } else if (techInfo.backend) {
       projectType = 'Backend';
-    } else if (scanResult.importantFiles.some((f) => f.toLowerCase().includes('cli') || f.includes('bin/'))) {
+    } else if (scanResult.importantFiles.some((f) => {
+      const isNestedIgnored = f.includes('docs/') || f.includes('examples/') || f.includes('tests/') || f.includes('playground/') || f.includes('demo/') || f.includes('sample/');
+      return !isNestedIgnored && (f.toLowerCase().includes('cli') || f.includes('bin/'));
+    })) {
       projectType = 'CLI';
     } else {
       projectType = 'Library';

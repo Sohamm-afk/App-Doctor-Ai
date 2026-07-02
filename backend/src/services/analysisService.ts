@@ -89,7 +89,10 @@ export class AnalysisService {
       projectType = 'Frontend';
     } else if (techInfo.backend) {
       projectType = 'Backend';
-    } else if (scanResult.importantFiles.some((f) => f.toLowerCase().includes('cli') || f.includes('bin/'))) {
+    } else if (scanResult.importantFiles.some((f) => {
+      const isNestedIgnored = f.includes('docs/') || f.includes('examples/') || f.includes('tests/') || f.includes('playground/') || f.includes('demo/') || f.includes('sample/');
+      return !isNestedIgnored && (f.toLowerCase().includes('cli') || f.includes('bin/'));
+    })) {
       projectType = 'CLI';
     } else {
       projectType = 'Library';
@@ -464,34 +467,43 @@ export class AnalysisService {
     if (hasRailwayToml) deploymentFindings.push({ title: 'Railway Hosting Stack', type: 'Hosting', configPath: 'railway.json' });
     if (hasK8s) deploymentFindings.push({ title: 'Kubernetes Cluster Deployment', type: 'Orchestration', configPath: 'k8s/' });
 
-    // Architecture Classifier
+    // Architecture Classifier based on projectType
     let pattern: ArchitectureMetadata['pattern'] = 'Unknown';
     let archType = 'Library / Utility';
 
-    const pathString = files.join('\n').toLowerCase();
-    const hasControllers = pathString.includes('/controllers/') || pathString.includes('/controller/');
-    const hasModels = pathString.includes('/models/') || pathString.includes('/model/');
-    const hasViews = pathString.includes('/views/') || pathString.includes('/view/');
+    if (projectType === 'Full Stack') {
+      pattern = 'Monolith';
+      archType = 'Full Stack Architecture';
+    } else if (projectType === 'Frontend') {
+      pattern = 'Monolith';
+      archType = 'Frontend Architecture';
+    } else if (projectType === 'Backend') {
+      const pathString = files.join('\n').toLowerCase();
+      const hasControllers = pathString.includes('/controllers/') || pathString.includes('/controller/');
+      const hasModels = pathString.includes('/models/') || pathString.includes('/model/');
+      const hasViews = pathString.includes('/views/') || pathString.includes('/view/');
 
-    if (techInfo.frontend && techInfo.backend) {
-      pattern = 'Monolith';
-      archType = 'Full Stack Web Monolith';
-    } else if (techInfo.frontend) {
-      pattern = 'Monolith';
-      archType = 'SPA / Frontend Client';
-    } else if (techInfo.backend) {
       if (hasControllers && hasModels && hasViews) {
         pattern = 'MVC';
-        archType = 'Model-View-Controller API Backend';
+        archType = 'Backend Architecture (MVC)';
       } else {
         pattern = 'Layered';
-        archType = 'Layered Architecture Backend';
+        archType = 'Backend Architecture (Layered)';
       }
+    } else if (projectType === 'CLI') {
+      pattern = 'Unknown';
+      archType = 'CLI Architecture';
+    } else {
+      pattern = 'Unknown';
+      archType = 'Library Architecture';
     }
 
     if (scanResult.importantFiles.filter((f) => f.endsWith('package.json')).length > 2) {
-      pattern = 'Microservices';
-      archType = 'Monorepo / Microservices Federation';
+      const isMonorepo = !scanResult.importantFiles.some(f => f.includes('examples/') || f.includes('docs/'));
+      if (isMonorepo) {
+        pattern = 'Microservices';
+        archType = 'Monorepo / Microservices Federation';
+      }
     }
 
     // Try to extract clean repository name from package.json or git config to avoid UUID temp paths
@@ -551,6 +563,38 @@ export class AnalysisService {
         position: { x: 300, y: 150 },
         data: { technology: 'CLI Tool' }
       });
+    } else if (projectType === 'Frontend') {
+      nodes.push(
+        { id: 'node-client', label: 'Client App', type: 'client', position: { x: 100, y: 150 }, data: { technology: techInfo.frontend || 'Web Browser' } },
+        { id: 'node-hosting', label: 'Static Web Hosting', type: 'hosting', position: { x: 300, y: 150 }, data: { technology: techInfo.deployment || 'CDN / Edge Hosting' } }
+      );
+      edges.push(
+        { id: 'edge-client-hosting', source: 'node-client', target: 'node-hosting', label: 'Deploy' }
+      );
+    } else if (projectType === 'Backend') {
+      nodes.push(
+        { id: 'node-gateway', label: 'API Gateway', type: 'gateway', position: { x: 300, y: 150 }, data: { technology: 'Reverse Proxy / CORS' } },
+        { id: 'node-service', label: 'Backend API Service', type: 'service', position: { x: 500, y: 150 }, data: { technology: techInfo.backend || 'Runtime Service', health: securityFindings.length > 3 ? 'warning' : 'healthy' } }
+      );
+      edges.push(
+        { id: 'edge-gateway-service', source: 'node-gateway', target: 'node-service', label: 'Proxy' }
+      );
+
+      if (techInfo.database) {
+        nodes.push({
+          id: 'node-database',
+          label: 'Database Store',
+          type: 'database',
+          position: { x: 700, y: 150 },
+          data: { technology: techInfo.database },
+        });
+        edges.push({
+          id: 'edge-service-db',
+          source: 'node-service',
+          target: 'node-database',
+          label: 'Driver',
+        });
+      }
     } else {
       nodes.push(
         { id: 'node-client', label: 'Client App', type: 'client', position: { x: 100, y: 150 }, data: { technology: techInfo.frontend || 'Web Browser' } },
