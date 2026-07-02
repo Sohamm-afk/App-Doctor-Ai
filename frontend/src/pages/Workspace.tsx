@@ -7,7 +7,6 @@ import { ProjectCard } from '@/components/cards/Cards';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Skeleton, SkeletonCard } from '@/components/ui/Loading';
 import { SearchBar } from '@/components/common/CommandPalette';
-import { mockService } from '@/services/mock';
 import { ROUTES } from '@/constants';
 import { useToast } from '@/components/ui/Toast';
 import type { Project } from '@/types';
@@ -24,16 +23,34 @@ export default function WorkspacePage() {
   const { error } = useToast();
 
   useEffect(() => {
-    mockService.getProjects()
-      .then((data) => {
-        setProjects(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        error('Failed to load projects', err instanceof Error ? err.message : String(err));
-        setLoading(false);
-      });
-  }, [error]);
+    const listStr = localStorage.getItem('scanned_projects_list') || '[]';
+    const ids: string[] = JSON.parse(listStr);
+    const mappedProjects: Project[] = [];
+    for (const id of ids) {
+      const localScanData = localStorage.getItem(`scan_result_${id}`);
+      if (localScanData) {
+        const scanData = JSON.parse(localScanData);
+        mappedProjects.push({
+          id,
+          name: scanData.metadata?.project_name || 'Unnamed Project',
+          description: `Real-time repository analysis for ${scanData.metadata?.repository_name}.`,
+          repositoryUrl: scanData.metadata?.repository_name ? `https://github.com/${scanData.metadata.repository_name}` : '',
+          language: (((scanData.metadata?.languages || [])[0] || 'unknown').toLowerCase() as any),
+          framework: scanData.metadata?.frontend || scanData.metadata?.backend || 'Other',
+          status: 'active',
+          launchScore: scanData.launch_score?.overall ?? 74,
+          lastScannedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          cloudProvider: 'other',
+          teamSize: 1,
+          tags: scanData.metadata?.languages || [],
+        });
+      }
+    }
+    setProjects(mappedProjects);
+    setLoading(false);
+  }, []);
 
   const filtered = (projects ?? []).filter((p) => {
     if (!p) return false;
