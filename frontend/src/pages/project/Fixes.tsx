@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Wrench, Shield, CheckCircle } from 'lucide-react';
+import { Wrench, Shield, CheckCircle, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { DiffViewer } from '@/components/code/CodeBlock';
@@ -205,6 +205,12 @@ export default function FixesPage() {
     }, 1500);
   };
 
+  const handleCopyDiff = () => {
+    if (!selectedPatch?.diff) return;
+    navigator.clipboard.writeText(selectedPatch.diff);
+    success('Diff Copied', 'Unified diff patch copied to clipboard');
+  };
+
   if (!localScanData && !loading) {
     return (
       <div className="card p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
@@ -248,72 +254,74 @@ export default function FixesPage() {
         </p>
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left Side — List of Patches */}
-        <div className="space-y-3">
-          <h3 className="text-h4 font-semibold text-text mb-2">Available Patches</h3>
-          {groupedPatches.map((patch) => {
-            const isApplied = appliedList.includes(patch.id);
-            const isSelected = selectedPatch?.title === patch.title;
-            return (
-              <div
-                key={patch.id}
-                onClick={() => setSelectedPatch(patch)}
-                className={`card p-5 cursor-pointer transition-all ${
-                  isSelected ? 'ring-2 ring-primary-500 border-primary-500 bg-bg-subtle/40' : 'hover:bg-bg-subtle'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <Badge variant={patch.severity === 'critical' ? 'critical' : patch.severity === 'high' ? 'high' : patch.severity === 'medium' ? 'medium' : 'low'} dot>
-                      {patch.severity}
-                    </Badge>
-                    {patch.framework && (
-                      <Badge variant="neutral" size="xs" className="bg-bg-subtle border-border text-text-muted capitalize">
-                        {patch.framework}
+        <div className="flex flex-col">
+          <h3 className="text-h4 font-semibold text-text mb-3">Available Patches</h3>
+          <div className="space-y-3 overflow-y-auto pr-2 no-scrollbar" style={{ maxHeight: '75vh' }}>
+            {groupedPatches.map((patch) => {
+              const isApplied = appliedList.includes(patch.id);
+              const isSelected = selectedPatch?.title === patch.title;
+              return (
+                <div
+                  key={patch.id}
+                  onClick={() => setSelectedPatch(patch)}
+                  className={`card p-5 cursor-pointer transition-all ${
+                    isSelected ? 'ring-2 ring-primary-500 border-primary-500 bg-bg-subtle/40' : 'hover:bg-bg-subtle'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant={patch.severity === 'critical' ? 'critical' : patch.severity === 'high' ? 'high' : patch.severity === 'medium' ? 'medium' : 'low'} dot>
+                        {patch.severity}
                       </Badge>
-                    )}
+                      {patch.framework && (
+                        <Badge variant="neutral" size="xs" className="bg-bg-subtle border-border text-text-muted capitalize">
+                          {patch.framework}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {patch.occurrences && (
+                        <span className="text-[10px] bg-bg-subtle text-text-muted px-2 py-0.5 rounded-full border border-border font-medium">
+                          {patch.occurrences} {patch.occurrences === 1 ? 'occurrence' : 'occurrences'}
+                        </span>
+                      )}
+                      {isApplied && (
+                        <Badge variant="success" size="xs">
+                          Applied
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {patch.occurrences && (
-                      <span className="text-[10px] bg-bg-subtle text-text-muted px-2 py-0.5 rounded-full border border-border font-medium">
-                        {patch.occurrences} {patch.occurrences === 1 ? 'occurrence' : 'occurrences'}
-                      </span>
-                    )}
-                    {isApplied && (
-                      <Badge variant="success" size="xs">
-                        Applied
-                      </Badge>
+
+                  <h4 className="text-body-sm font-semibold text-text mb-1">{patch.title}</h4>
+                  <p className="text-caption text-text-muted mb-2 line-clamp-2 leading-relaxed">
+                    {getImpactSummary(patch.issue) || patch.title}
+                  </p>
+
+                  {/* Show affected files list */}
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {patch.affectedFiles?.slice(0, 2).map((file: string, idx: number) => (
+                      <code key={idx} className="text-[9px] text-text-muted bg-bg-subtle px-1.5 py-0.5 rounded border border-border font-mono truncate max-w-[120px]">
+                        {file.split('/').pop()}
+                      </code>
+                    ))}
+                    {patch.affectedFiles?.length > 2 && (
+                      <span className="text-[9px] text-text-muted self-center">+{patch.affectedFiles.length - 2} more</span>
                     )}
                   </div>
                 </div>
-
-                <h4 className="text-body-sm font-semibold text-text mb-1">{patch.title}</h4>
-                <p className="text-caption text-text-muted mb-2 line-clamp-2 leading-relaxed">
-                  {getImpactSummary(patch.issue) || patch.title}
-                </p>
-
-                {/* Show affected files list */}
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {patch.affectedFiles?.slice(0, 2).map((file: string, idx: number) => (
-                    <code key={idx} className="text-[9px] text-text-muted bg-bg-subtle px-1.5 py-0.5 rounded border border-border font-mono truncate max-w-[120px]">
-                      {file.split('/').pop()}
-                    </code>
-                  ))}
-                  {patch.affectedFiles?.length > 2 && (
-                    <span className="text-[9px] text-text-muted self-center">+{patch.affectedFiles.length - 2} more</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
         {/* Right Side — Diff Viewer & Actions */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="card p-6 flex flex-col h-full justify-between min-h-[400px]">
+        <div className="lg:col-span-2 lg:sticky lg:top-6 lg:self-start space-y-4">
+          <div className="card p-6 flex flex-col justify-between min-h-[400px]">
             <div>
-              <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
+              <div className="flex items-start justify-between flex-wrap gap-4 mb-4 border-b border-border pb-4">
                 <div>
                   <h3 className="text-h4 font-semibold text-text">{selectedPatch.title}</h3>
                   <div className="flex flex-col gap-2 mt-3">
@@ -370,19 +378,29 @@ export default function FixesPage() {
                     )}
                   </div>
                 </div>
-                <Button
-                  variant="primary"
-                  onClick={handleApply}
-                  loading={applying}
-                  disabled={appliedList.includes(selectedPatch.id)}
-                  leftIcon={appliedList.includes(selectedPatch.id) ? <CheckCircle size={14} /> : <Wrench size={14} />}
-                >
-                  {appliedList.includes(selectedPatch.id) ? 'Applied' : 'Apply Patch'}
-                </Button>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="secondary"
+                    onClick={handleCopyDiff}
+                    leftIcon={<Copy size={14} />}
+                  >
+                    Copy Patch
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleApply}
+                    loading={applying}
+                    disabled={appliedList.includes(selectedPatch.id)}
+                    leftIcon={appliedList.includes(selectedPatch.id) ? <CheckCircle size={14} /> : <Wrench size={14} />}
+                  >
+                    {appliedList.includes(selectedPatch.id) ? 'Applied' : 'Apply Patch'}
+                  </Button>
+                </div>
               </div>
 
               {/* Markdown remediation guidelines */}
-              <div className="mt-4 border-t border-border pt-4">
+              <div className="mt-4">
                 {formatMarkdown(selectedPatch.issue)}
               </div>
 
