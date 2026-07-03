@@ -9,15 +9,71 @@ import { useToast } from '@/components/ui/Toast';
 import type { ChatMessage } from '@/types';
 
 const SUGGESTED_PROMPTS = [
-  "How can I improve the security score?",
-  "What database was detected?",
-  "Tell me about the architecture type."
+  "Why is my launch score low?",
+  "Is this production ready?",
+  "Show my biggest security risks.",
+  "How can I improve architecture?",
+  "What should I fix first?",
+  "Explain my launch score."
 ];
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
   visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.05, duration: 0.3 } }),
 };
+
+function formatChatMarkdown(text: string): React.ReactNode {
+  if (!text) return null;
+  if (!text.includes('#')) {
+    return <span className="whitespace-pre-line">{text}</span>;
+  }
+
+  const lines = text.split('\n');
+  const rendered: React.ReactNode[] = [];
+  let inCodeBlock = false;
+  let codeLines: string[] = [];
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
+
+    if (line.startsWith('```')) {
+      if (inCodeBlock) {
+        inCodeBlock = false;
+        rendered.push(
+          <pre key={`code-${idx}`} className="bg-gray-950 p-4 rounded-xl border border-gray-800 font-mono text-[11px] text-emerald-400 overflow-x-auto my-2">
+            <code>{codeLines.join('\n')}</code>
+          </pre>
+        );
+        codeLines = [];
+      } else {
+        inCodeBlock = true;
+      }
+      continue;
+    }
+
+    if (inCodeBlock) {
+      codeLines.push(line);
+      continue;
+    }
+
+    if (line.startsWith('# ') || line.startsWith('## ')) {
+      const clean = line.replace(/^#+\s*/, '');
+      rendered.push(<h4 key={idx} className="text-body font-bold text-text mt-4 mb-1.5 border-b border-border pb-0.5">{clean}</h4>);
+    } else if (line.startsWith('### ')) {
+      rendered.push(<h5 key={idx} className="text-body-sm font-semibold text-text mt-3 mb-1">{line.slice(4)}</h5>);
+    } else if (line.startsWith('- ')) {
+      rendered.push(<li key={idx} className="text-body-sm text-text-muted ml-4 list-disc pl-1 my-0.5">{line.slice(2)}</li>);
+    } else if (line.startsWith('* ')) {
+      rendered.push(<li key={idx} className="text-body-sm text-text-muted ml-4 list-disc pl-1 my-0.5">{line.slice(2)}</li>);
+    } else if (line.trim() === '') {
+      // rely on container layout
+    } else {
+      rendered.push(<p key={idx} className="text-body-sm text-text-muted leading-relaxed my-1">{line}</p>);
+    }
+  }
+
+  return <div className="space-y-2">{rendered}</div>;
+}
 
 export default function AICTOPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,7 +83,7 @@ export default function AICTOPage() {
   const [typing, setTyping] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { error } = useToast();
+  const { success, error } = useToast();
 
   useEffect(() => {
     if (!id) {
@@ -38,69 +94,16 @@ export default function AICTOPage() {
     if (localScanData) {
       const parsed = JSON.parse(localScanData);
       setScanResult(parsed);
-
-      const savedReview = localStorage.getItem(`aicto_review_${id}`);
-      if (savedReview) {
-        setMessages([
-          {
-            id: 'welcome',
-            role: 'assistant',
-            content: savedReview,
-            timestamp: new Date().toISOString()
-          }
-        ]);
-        setLoading(false);
-      } else {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
-        axios.post(`${apiBaseUrl}/api/ai/review`, { scanResult: parsed })
-          .then((res) => {
-            const review = res.data?.review;
-            if (review) {
-              localStorage.setItem(`aicto_review_${id}`, review);
-              setMessages([
-                {
-                  id: 'welcome',
-                  role: 'assistant',
-                  content: review,
-                  timestamp: new Date().toISOString()
-                }
-              ]);
-            } else {
-              setMessages([
-                {
-                  id: 'welcome',
-                  role: 'assistant',
-                  content: 'AI CTO consultation has not been generated yet.',
-                  timestamp: new Date().toISOString()
-                }
-              ]);
-            }
-            setLoading(false);
-          })
-          .catch((err) => {
-            console.error('Failed to generate AI CTO review:', err);
-            setMessages([
-              {
-                id: 'welcome',
-                role: 'assistant',
-                content: 'AI CTO consultation has not been generated yet.',
-                timestamp: new Date().toISOString()
-              }
-            ]);
-            setLoading(false);
-          });
-      }
-    } else {
       setMessages([
         {
           id: 'welcome',
           role: 'assistant',
-          content: 'AI CTO consultation has not been generated yet.',
+          content: "Hi! I've finished reviewing your repository.\n\nOverall, your project has a solid foundation. I found several strengths as well as a few areas that should be improved before production.\n\nI'm ready to answer any questions about your architecture, security, performance, scalability or deployment.\n\nWhat would you like to know?",
           timestamp: new Date().toISOString()
         }
       ]);
-      setLoading(false);
     }
+    setLoading(false);
   }, [id]);
 
   useEffect(() => {
@@ -149,22 +152,56 @@ export default function AICTOPage() {
     }
   };
 
+  const handleGenerateReport = async () => {
+    if (!scanResult || typing) return;
+    setTyping(true);
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+      const { data } = await axios.post(`${apiBaseUrl}/api/ai/review`, { scanResult });
+      if (data?.review) {
+        const reportMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: data.review,
+          timestamp: new Date().toISOString()
+        };
+        setMessages((prev) => [...prev, reportMessage]);
+        success('CTO Report Generated', 'The full architectural audit report has been added to your chat consultation.');
+      }
+    } catch (e: any) {
+      error('Failed to generate report', e.message || String(e));
+    } finally {
+      setTyping(false);
+    }
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-5 h-[calc(100vh-140px)]">
       {/* Chat pane */}
       <div className="flex-1 card flex flex-col overflow-hidden min-h-[400px]">
         {/* Chat Header */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-border bg-bg-subtle">
-          <div className="w-9 h-9 rounded-xl bg-primary-500 flex items-center justify-center">
-            <Bot size={18} className="text-white" />
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-bg-subtle flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary-500 flex items-center justify-center">
+              <Bot size={18} className="text-white" />
+            </div>
+            <div>
+              <h3 className="text-body-sm font-semibold text-text">AI CTO Consulting</h3>
+              <span className="text-[10px] text-text-muted flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Active in sandbox
+              </span>
+            </div>
           </div>
-          <div>
-            <h3 className="text-body-sm font-semibold text-text">AI CTO Consulting</h3>
-            <span className="text-[10px] text-text-muted flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Active in sandbox
-            </span>
-          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleGenerateReport}
+            disabled={typing || !scanResult}
+            leftIcon={<Sparkles size={14} className="text-amber-500 animate-pulse" />}
+          >
+            Generate Full CTO Report
+          </Button>
         </div>
 
         {/* Message area */}
@@ -191,7 +228,7 @@ export default function AICTOPage() {
                       ? 'bg-primary-500 text-white border-primary-600 rounded-tr-sm shadow-sm'
                       : 'bg-bg-card text-text border-border rounded-tl-sm'
                   }`}>
-                    {msg.content}
+                    {isUser ? msg.content : formatChatMarkdown(msg.content)}
                   </div>
                 </motion.div>
               );
@@ -223,7 +260,7 @@ export default function AICTOPage() {
         {/* Suggested Prompts */}
         <div className="px-6 py-2.5 bg-bg-subtle/50 border-t border-border flex items-center gap-2 overflow-x-auto no-scrollbar">
           <span className="text-[10px] text-text-muted font-semibold uppercase flex-shrink-0">Suggested:</span>
-          {SUGGESTED_PROMPTS.slice(0, 4).map((prompt: string) => (
+          {SUGGESTED_PROMPTS.map((prompt: string) => (
             <button
               key={prompt}
               onClick={() => handleSend(prompt)}
