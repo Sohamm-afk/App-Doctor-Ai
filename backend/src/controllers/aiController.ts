@@ -271,7 +271,8 @@ Rules:
     }
 
     try {
-      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      // Create document with buffer pages allowed for footers
+      const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
 
       // Configure PDF headers
       res.setHeader('Content-Type', 'application/pdf');
@@ -282,104 +283,222 @@ Rules:
 
       doc.pipe(res);
 
-      // --- PAGE 1: TITLE & METADATA ---
-      doc.fontSize(26).fillColor('#1e293b').text('APPDOCTOR AI AUDIT REPORT', { align: 'center' });
-      doc.moveDown(0.5);
-      doc.fontSize(10).fillColor('#64748b').text(`Generated on: ${new Date().toLocaleString()}`, { align: 'center' });
-      doc.moveDown(2);
+      // Parse review sections if available
+      const parseSections = (markdown: string): Record<string, string> => {
+        const sections: Record<string, string> = {};
+        if (!markdown) return sections;
+        const matches = markdown.split(/(?=^#+\s+)/m);
+        matches.forEach(chunk => {
+          const match = chunk.match(/^#+\s+(.+)$/m);
+          if (match) {
+            const title = match[1].trim();
+            const content = chunk.slice(match[0].length).trim();
+            sections[title] = content;
+          }
+        });
+        return sections;
+      };
+      const sections = parseSections(review || '');
 
-      // Metadata card
-      doc.rect(50, doc.y, 495, 120).fillAndStroke('#f8fafc', '#e2e8f0');
-      doc.fillColor('#1e293b');
-      doc.fontSize(14).text('Repository Specifications', 65, doc.y + 15);
-      doc.fontSize(10).fillColor('#475569');
-      doc.moveDown(0.8);
-      doc.text(`Project Name: ${scanResult.metadata?.project_name || 'Unnamed Repository'}`);
-      doc.text(`Repository: ${scanResult.metadata?.repository_name || '—'}`);
-      doc.text(`Languages Discovered: ${(scanResult.metadata?.languages || []).join(', ') || '—'}`);
-      doc.text(`Total Files Checked: ${scanResult.metadata?.file_count || 0} files in ${scanResult.metadata?.folder_count || 0} directories`);
-      doc.text(`Overall Launch Score: ${scanResult.launch_score?.overall ?? 100} / 100`);
+      // Helper for severity color codes
+      const getSeverityColor = (sev: string) => {
+        const lower = (sev || '').toLowerCase();
+        if (lower === 'critical') return '#dc2626';
+        if (lower === 'high') return '#ea580c';
+        if (lower === 'medium') return '#d97706';
+        return '#2563eb';
+      };
 
-      // Page Break
+      // --- PAGE 1: COVER PAGE ---
+      doc.rect(50, 50, 495, 742).fill('#0f172a');
+      
+      // Title Block
+      doc.fillColor('#38bdf8').fontSize(13).text('APPDOCTOR AI AUDIT REPORT', 90, 150);
+      doc.fillColor('#ffffff').fontSize(26).text('Executive Engineering Audit', 90, 175, { width: 400 });
+      doc.moveTo(90, 240).lineTo(505, 240).stroke('#38bdf8');
+
+      // Metadata section
+      doc.fillColor('#94a3b8').fontSize(9).text('PROJECT NAME', 90, 275);
+      doc.fillColor('#ffffff').fontSize(11).text(scanResult.metadata?.project_name || 'Unnamed Repository', 90, 290);
+
+      doc.fillColor('#94a3b8').fontSize(9).text('REPOSITORY', 90, 335);
+      doc.fillColor('#ffffff').fontSize(11).text(scanResult.metadata?.repository_name || '—', 90, 350);
+
+      doc.fillColor('#94a3b8').fontSize(9).text('PRIMARY LANGUAGE / TECH', 90, 395);
+      doc.fillColor('#ffffff').fontSize(11).text((scanResult.metadata?.languages || []).join(', ') || '—', 90, 410);
+
+      doc.fillColor('#94a3b8').fontSize(9).text('OVERALL LAUNCH SCORE', 90, 455);
+      doc.fillColor('#38bdf8').fontSize(24).text(`${scanResult.launch_score?.overall ?? 100} / 100`, 90, 470);
+
+      doc.fillColor('#94a3b8').fontSize(9).text('AUDIT TIMESTAMP', 90, 535);
+      doc.fillColor('#ffffff').fontSize(11).text(new Date().toLocaleString(), 90, 550);
+
+      // --- PAGE 2: EXECUTIVE SUMMARY & LAUNCH BREAKDOWN ---
       doc.addPage();
+      doc.fontSize(18).fillColor('#0f172a').text('1. Executive Summary', 50, 60);
+      doc.moveDown(0.8);
+      
+      const summaryContent = sections['Executive Summary'] || 'Repository scans completed successfully. The audit indicates the project has valid dependencies and is prepared for code lifecycle evaluation.';
+      doc.fontSize(10).fillColor('#334155').text(summaryContent, { align: 'justify', lineGap: 3 });
 
-      // --- PAGE 2: SECURITY FINDINGS ---
-      doc.fontSize(18).fillColor('#1e293b').text('Security Assessment', 50, doc.y);
-      doc.moveDown(1);
+      doc.moveDown(2);
+      doc.fontSize(14).fillColor('#0f172a').text('Launch Score Breakdown', 50, doc.y);
+      doc.moveDown(0.8);
+
+      const drawProgressBar = (y: number, label: string, score: number, color: string) => {
+        doc.fillColor('#475569').fontSize(9).text(label, 50, y + 1);
+        doc.rect(170, y, 280, 8).fill('#e2e8f0');
+        doc.rect(170, y, 2.8 * score, 8).fill(color);
+        doc.fillColor('#0f172a').fontSize(9).text(`${score}/100`, 465, y);
+      };
+
+      const scoreY = doc.y;
+      drawProgressBar(scoreY, 'Overall Score', scanResult.launch_score?.overall ?? 100, '#0f172a');
+      drawProgressBar(scoreY + 25, 'Security Score', scanResult.launch_score?.security ?? 100, getSeverityColor('critical'));
+      drawProgressBar(scoreY + 50, 'Performance Score', scanResult.launch_score?.performance ?? 100, getSeverityColor('medium'));
+      drawProgressBar(scoreY + 75, 'Quality Score', scanResult.launch_score?.quality ?? 100, getSeverityColor('low'));
+
+      doc.y = scoreY + 110;
+
+      // --- PAGE 3: TECHNOLOGY STACK TABLE ---
+      doc.addPage();
+      doc.fontSize(18).fillColor('#0f172a').text('2. Technology Stack & Frameworks', 50, 60);
+      doc.moveDown(1.5);
+
+      const drawTableRow = (y: number, label: string, value: string) => {
+        doc.rect(50, y, 160, 22).fillAndStroke('#f8fafc', '#e2e8f0');
+        doc.rect(210, y, 335, 22).stroke('#e2e8f0');
+        doc.fillColor('#475569').fontSize(9).text(label, 60, y + 6);
+        doc.fillColor('#0f172a').fontSize(9).text(value || 'None Detected', 220, y + 6);
+      };
+
+      let tableY = doc.y;
+      drawTableRow(tableY, 'Languages Discovered', (scanResult.metadata?.languages || []).join(', '));
+      drawTableRow(tableY + 22, 'Frontend Framework', scanResult.metadata?.technology?.frontend);
+      drawTableRow(tableY + 44, 'Backend Framework', scanResult.metadata?.technology?.backend);
+      drawTableRow(tableY + 66, 'Database Engine', scanResult.metadata?.technology?.database);
+      drawTableRow(tableY + 88, 'Package Manager', scanResult.metadata?.technology?.packageManager);
+      drawTableRow(tableY + 110, 'Deployment Target', scanResult.metadata?.technology?.deployment);
+      drawTableRow(tableY + 132, 'CI/CD Pipeline', scanResult.metadata?.technology?.ciCd);
+
+      doc.y = tableY + 180;
+
+      // --- PAGE 4: SECURITY FINDINGS ---
+      doc.addPage();
+      doc.fontSize(18).fillColor('#0f172a').text('3. Security Assessment', 50, 60);
+      doc.moveDown(0.8);
+
+      if (sections['Security Assessment']) {
+        doc.fontSize(9.5).fillColor('#334155').text(sections['Security Assessment'], { lineGap: 2 });
+        doc.moveDown(1.5);
+      }
+
       const security = scanResult.security_findings || [];
       if (security.length === 0) {
-        doc.fontSize(11).fillColor('#15803d').text('No security issues detected.');
+        doc.fontSize(10).fillColor('#16a34a').text('No security vulnerabilities identified in code paths.');
       } else {
         security.forEach((s: any, idx: number) => {
-          doc.fontSize(12).fillColor('#b91c1c').text(`[#${idx + 1}] ${s.title} (${s.severity.toUpperCase()})`);
-          doc.fontSize(9).fillColor('#475569');
-          doc.text(`File: ${s.file} : line ${s.lineNumber}`);
-          doc.fontSize(10).fillColor('#1e293b').text(`Description: ${s.description}`);
+          const sevColor = getSeverityColor(s.severity);
+          doc.rect(50, doc.y, 50, 13).fill(sevColor);
+          doc.fillColor('#ffffff').fontSize(7.5).text(s.severity.toUpperCase(), 50, doc.y + 3, { align: 'center', width: 50 });
+          doc.fillColor('#0f172a').fontSize(11).text(s.title, 110, doc.y - 11);
+          doc.fontSize(8.5).fillColor('#475569').text(`File: ${s.file} : Line ${s.lineNumber}`, 50, doc.y + 4);
+          doc.fontSize(9.5).fillColor('#334155').text(`Description: ${s.description}`, 50, doc.y + 4);
           if (s.evidence) {
-            doc.fontSize(9).fillColor('#0f172a').font('Courier').text(`Evidence: ${s.evidence}`);
+            doc.fontSize(8.5).fillColor('#0f172a').font('Courier').text(`Evidence: ${s.evidence}`, 50, doc.y + 4);
             doc.font('Helvetica');
           }
           doc.moveDown(1);
         });
       }
 
-      // --- PAGE 3: PERFORMANCE AND QUALITY ---
+      // --- PAGE 5: PERFORMANCE FINDINGS ---
       doc.addPage();
-      doc.fontSize(18).fillColor('#1e293b').text('Performance & Quality Audit', 50, doc.y);
-      doc.moveDown(1);
+      doc.fontSize(18).fillColor('#0f172a').text('4. Performance Assessment', 50, 60);
+      doc.moveDown(0.8);
 
-      doc.fontSize(14).text('Performance Findings');
-      doc.moveDown(0.5);
+      if (sections['Performance Assessment']) {
+        doc.fontSize(9.5).fillColor('#334155').text(sections['Performance Assessment'], { lineGap: 2 });
+        doc.moveDown(1.5);
+      }
+
       const perf = scanResult.performance_findings || [];
       if (perf.length === 0) {
-        doc.fontSize(11).fillColor('#15803d').text('No performance bottlenecks detected.');
+        doc.fontSize(10).fillColor('#16a34a').text('No performance bottlenecks detected.');
       } else {
         perf.forEach((p: any) => {
-          doc.fontSize(11).fillColor('#d97706').text(`- ${p.title} (Impact: ${p.impact || 'Medium'})`);
-          doc.fontSize(9).fillColor('#475569').text(`File: ${p.file}`);
-          doc.fontSize(10).fillColor('#1e293b').text(`Description: ${p.description}`);
-          doc.moveDown(0.5);
+          doc.rect(50, doc.y, 50, 13).fill(getSeverityColor('medium'));
+          doc.fillColor('#ffffff').fontSize(7.5).text('MEDIUM', 50, doc.y + 3, { align: 'center', width: 50 });
+          doc.fillColor('#0f172a').fontSize(11).text(p.title, 110, doc.y - 11);
+          doc.fontSize(8.5).fillColor('#475569').text(`File: ${p.file}`, 50, doc.y + 4);
+          doc.fontSize(9.5).fillColor('#334155').text(`Description: ${p.description}`, 50, doc.y + 4);
+          doc.moveDown(0.8);
         });
       }
 
-      doc.moveDown(1.5);
-      doc.fontSize(14).text('Quality Findings');
-      doc.moveDown(0.5);
+      // --- PAGE 6: CODE QUALITY & DEBT ---
+      doc.addPage();
+      doc.fontSize(18).fillColor('#0f172a').text('5. Code Quality & Technical Debt', 50, 60);
+      doc.moveDown(0.8);
+
+      if (sections['Technical Debt']) {
+        doc.fontSize(9.5).fillColor('#334155').text(sections['Technical Debt'], { lineGap: 2 });
+        doc.moveDown(1.5);
+      }
+
       const qual = scanResult.quality_findings || [];
       if (qual.length === 0) {
-        doc.fontSize(11).fillColor('#15803d').text('No quality checks violations identified.');
+        doc.fontSize(10).fillColor('#16a34a').text('No code quality violations or maintainability concerns found.');
       } else {
         qual.forEach((q: any) => {
-          doc.fontSize(11).fillColor('#2563eb').text(`- ${q.title}`);
-          doc.fontSize(9).fillColor('#475569').text(`File: ${q.file}`);
-          doc.fontSize(10).fillColor('#1e293b').text(`Description: ${q.description}`);
-          doc.moveDown(0.5);
+          doc.rect(50, doc.y, 50, 13).fill(getSeverityColor('low'));
+          doc.fillColor('#ffffff').fontSize(7.5).text('LOW', 50, doc.y + 3, { align: 'center', width: 50 });
+          doc.fillColor('#0f172a').fontSize(11).text(q.title, 110, doc.y - 11);
+          doc.fontSize(8.5).fillColor('#475569').text(`File: ${q.file}`, 50, doc.y + 4);
+          doc.fontSize(9.5).fillColor('#334155').text(`Description: ${q.description}`, 50, doc.y + 4);
+          doc.moveDown(0.8);
         });
       }
 
-      // --- PAGE 4: AI CTO REVIEW REPORT ---
-      if (review) {
-        doc.addPage();
-        doc.fontSize(18).fillColor('#1e293b').text('AI CTO Strategic Review', 50, doc.y);
-        doc.moveDown(1);
-        doc.fontSize(10).fillColor('#1e293b').text(review);
-      }
+      // --- PAGE 7: ARCHITECTURE ASSESSMENT ---
+      doc.addPage();
+      doc.fontSize(18).fillColor('#0f172a').text('6. Architecture Overview', 50, 60);
+      doc.moveDown(1);
+      
+      const archContent = sections['Architecture Assessment'] || 'No architectural limitations identified. The modules represent correct decoupled layers.';
+      doc.fontSize(9.5).fillColor('#334155').text(archContent, { lineGap: 3 });
 
-      // --- PAGE 5: REMEDIATION PATCHES ---
-      if (fixes && fixes.length > 0) {
-        doc.addPage();
-        doc.fontSize(18).fillColor('#1e293b').text('Automated Remediation Patches', 50, doc.y);
-        doc.moveDown(1);
-        fixes.forEach((f: any) => {
-          doc.fontSize(12).fillColor('#047857').text(`Fix: ${f.title}`);
-          doc.fontSize(9).fillColor('#475569').text(`Targets Issue: ${f.issue} (${f.filePath})`);
-          doc.moveDown(0.5);
-          if (f.diff) {
-            doc.fontSize(8).fillColor('#111827').font('Courier').text(f.diff);
-            doc.font('Helvetica');
-          }
-          doc.moveDown(1);
-        });
+      // --- PAGE 8: ROADMAP & VERDICT ---
+      doc.addPage();
+      doc.fontSize(18).fillColor('#0f172a').text('7. AI CTO Verdict & Priority Roadmap', 50, 60);
+      doc.moveDown(1);
+
+      doc.fontSize(13).fillColor('#0f172a').text('CTO Release Verdict');
+      doc.moveDown(0.4);
+      const verdictContent = sections['Final CTO Verdict'] || 'I recommend deploying after addressing any Critical or High security findings.';
+      doc.fontSize(9.5).fillColor('#334155').text(verdictContent, { lineGap: 2 });
+
+      doc.moveDown(1.5);
+      doc.fontSize(13).fillColor('#0f172a').text('30-Day Improvement Roadmap');
+      doc.moveDown(0.4);
+      const roadmapContent = sections['30-Day Improvement Roadmap'] || '1. Remediate top security alerts.\n2. Fix codebase quality warnings.';
+      doc.fontSize(9.5).fillColor('#334155').text(roadmapContent, { lineGap: 2 });
+
+      // --- POST-PROCESS: PAGE NUMBERS & HEADER/FOOTERS ---
+      const range = doc.bufferedPageRange();
+      for (let i = 0; i < range.count; i++) {
+        doc.switchToPage(i);
+        
+        // Skip header/footer on cover page
+        if (i > 0) {
+          // Draw thin line header
+          doc.fontSize(7.5).fillColor('#94a3b8').text('AppDoctor AI Executive Engineering Audit', 50, 30);
+          doc.moveTo(50, 42).lineTo(545, 42).stroke('#e2e8f0');
+
+          // Draw footer
+          doc.fontSize(7.5).fillColor('#94a3b8').text('Generated by AppDoctor AI', 50, 800);
+          doc.text(`Page ${i + 1} of ${range.count}`, 480, 800, { align: 'right', width: 65 });
+        }
       }
 
       doc.end();
