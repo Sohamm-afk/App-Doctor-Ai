@@ -16,49 +16,54 @@ export class AiController {
 
     try {
       const context = ContextBuilderService.build(scanResult);
-      const prompt = `You are an experienced CTO reviewing a software project. Analyze the following repository scan context:
+      const prompt = `You are a former Google Staff Engineer and Startup CTO conducting a professional engineering audit.
+Analyze the following repository scan context:
 ${JSON.stringify(context, null, 2)}
 
-Return exactly a JSON object matching this schema (do not wrap in markdown or backticks):
-{
-  "executive_summary": "Overall summary of the repository and its project architecture",
-  "strengths": ["list of major technical strengths of the project"],
-  "weaknesses": ["list of major security, performance or quality weaknesses"],
-  "technical_debt": "Detailed analysis of technical debt and maintenance requirements",
-  "production_readiness": "Assessment of production readiness, checking dependencies and configuration",
-  "recommendations": ["actionable recommendations for improvements and remediation"]
-}
+Write a professional engineering audit report in Markdown. Do not include JSON wrappers or markdown code blocks (like \`\`\`markdown) in your response, just return the raw markdown report text.
+Write naturally like a senior engineer, not a JSON summarizer. Keep the report around 600-900 words.
 
-CRITICAL LIMITATIONS: Do not invent, guess, or estimate details regarding live concurrent users, runtime telemetry (e.g. CPU/memory load), database response times, live cloud billing costs, Kubernetes scaling thresholds, or Redis recommendations. If these metrics are mentioned or requested, state them explicitly as "Not Determined".`;
+Use these sections exactly:
 
-      const reviewText = await GeminiService.generateContent(prompt, true);
-      
-      let formattedReview = '';
-      try {
-        const parsed = JSON.parse(reviewText);
-        formattedReview = `## Executive Summary
-${parsed.executive_summary || ''}
+# Executive Summary
+Provide a concise overview of the repository.
 
-## Strengths
-${(parsed.strengths || []).map((s: string) => `- ${s}`).join('\n')}
+# Engineering Strengths
+List 3-6 strengths.
 
-## Weaknesses
-${(parsed.weaknesses || []).map((w: string) => `- ${w}`).join('\n')}
+# Engineering Risks
+List the most important technical risks.
 
-## Technical Debt
-${parsed.technical_debt || ''}
+# Architecture Assessment
+Discuss scalability, maintainability, modularity and architecture quality.
 
-## Production Readiness
-${parsed.production_readiness || ''}
+# Security Assessment
+Discuss only the detected security findings. Do not invent vulnerabilities. If there are no findings, state that clearly.
 
-## Recommendations
-${(parsed.recommendations || []).map((r: string) => `- ${r}`).join('\n')}`;
-      } catch (err) {
-        console.error('[AiController] Failed to parse AI Review JSON from Gemini:', err);
-        formattedReview = reviewText;
-      }
+# Performance Assessment
+Comment on performance based only on detected findings. If there are no findings, state that clearly.
 
-      res.status(200).json({ review: formattedReview });
+# Technical Debt
+Describe maintainability concerns.
+
+# Production Readiness
+Give a score out of 100 and explain why.
+
+# 30-Day Improvement Roadmap
+Provide prioritized recommendations.
+
+# Final CTO Verdict
+Answer: Would you approve this project for production? Why?
+
+CRITICAL LIMITATIONS & RULES:
+- Never invent technologies.
+- Never invent databases.
+- Never invent vulnerabilities.
+- Base every statement strictly on the repository context.
+- Do not invent, guess, or estimate details regarding live concurrent users, runtime telemetry (e.g. CPU/memory load), database response times, live cloud billing costs, Kubernetes scaling thresholds, or Redis recommendations. If these metrics are mentioned or requested, state them explicitly as "Not Determined".`;
+
+      const reviewText = await GeminiService.generateContent(prompt);
+      res.status(200).json({ review: reviewText });
     } catch (err: any) {
       next(err);
     }
