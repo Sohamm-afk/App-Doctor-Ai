@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { GeminiService } from '../services/geminiService';
+import { ContextBuilderService } from '../services/contextBuilderService';
 import PDFDocument from 'pdfkit';
 
 export class AiController {
@@ -14,9 +15,10 @@ export class AiController {
     }
 
     try {
+      const context = ContextBuilderService.build(scanResult);
       const prompt = `You are the AI CTO of AppDoctor AI, an automated code audit platform.
 Inspect the following repository scan analysis:
-${JSON.stringify(scanResult, null, 2)}
+${JSON.stringify(context, null, 2)}
 
 Generate a detailed, technical, and actionable review divided into exactly these 8 sections:
 ## Executive Summary
@@ -49,8 +51,9 @@ CRITICAL LIMITATIONS: Do not invent, guess, or estimate details regarding live c
     }
 
     try {
+      const context = ContextBuilderService.build(scanResult);
       const prompt = `You are the AI CTO of AppDoctor AI. Answer the user's questions about their repository based strictly on the following repository analysis payload:
-${JSON.stringify(scanResult, null, 2)}
+${JSON.stringify(context, null, 2)}
 
 Previous chat conversation history:
 ${JSON.stringify(history || [])}
@@ -78,8 +81,9 @@ CRITICAL: Never simulate, invent, or guess details about concurrent users, live 
     }
 
     try {
+      const context = ContextBuilderService.build(scanResult);
       const prompt = `You are a Senior Software Remediation Engineer. Inspect the security findings and quality findings of this repository scan:
-${JSON.stringify(scanResult, null, 2)}
+${JSON.stringify(context, null, 2)}
 
 Generate a list of automated One-Click Fixes to resolve the detected security or quality findings.
 Return ONLY a JSON array matching this exact TypeScript structure (no markdown wrapper, raw JSON only):
