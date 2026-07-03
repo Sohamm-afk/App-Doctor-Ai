@@ -107,20 +107,91 @@ CRITICAL: Never simulate, invent, or guess details about concurrent users, live 
     }
 
     try {
+      const securityFindings = scanResult.security_findings || [];
+      const qualityFindings = scanResult.quality_findings || [];
+      
+      const allFindings = [
+        ...securityFindings.map((f: any) => ({ ...f, type: 'security' })),
+        ...qualityFindings.map((f: any) => ({ ...f, type: 'quality' }))
+      ];
+
+      // Group findings by title
+      const groupsMap = new Map<string, any[]>();
+      allFindings.forEach((finding) => {
+        const title = finding.title;
+        if (!groupsMap.has(title)) {
+          groupsMap.set(title, []);
+        }
+        groupsMap.get(title)!.push(finding);
+      });
+
+      // Filter and prioritize production files over test/example/doc files
+      const isTestOrExampleFile = (filePath: string) => {
+        const lower = filePath.toLowerCase();
+        return lower.includes('test') || lower.includes('example') || lower.includes('doc') || lower.includes('fixture');
+      };
+
+      const groupedList: any[] = [];
+      groupsMap.forEach((findings, title) => {
+        // Prioritize production source files
+        findings.sort((a, b) => {
+          const aTest = isTestOrExampleFile(a.file || '');
+          const bTest = isTestOrExampleFile(b.file || '');
+          if (aTest && !bTest) return 1;
+          if (!aTest && bTest) return -1;
+          return 0;
+        });
+
+        const primaryFinding = findings[0];
+        const affectedFiles = Array.from(new Set(findings.map((f) => f.file).filter(Boolean)));
+
+        groupedList.push({
+          title,
+          severity: primaryFinding.severity || 'low',
+          occurrences: findings.length,
+          affectedFiles,
+          primaryFile: primaryFinding.file || 'package.json',
+          findingsDetails: findings.map((f) => ({
+            file: f.file,
+            lineNumber: f.lineNumber,
+            evidence: f.evidence,
+            description: f.description
+          }))
+        });
+      });
+
+      if (groupedList.length === 0) {
+        res.status(200).json({ fixes: [] });
+        return;
+      }
+
+      // Sort groups by severity: critical, high, medium, low
+      const severityWeight = { critical: 4, high: 3, medium: 2, low: 1, info: 1 };
+      groupedList.sort((a, b) => {
+        const aW = (severityWeight as any)[a.severity.toLowerCase()] || 0;
+        const bW = (severityWeight as any)[b.severity.toLowerCase()] || 0;
+        return bW - aW;
+      });
+
       const context = ContextBuilderService.build(scanResult);
       const prompt = `You are a Senior Software Engineer auditing repository issues.
-Analyze the following repository context, findings, and technologies:
+Analyze the following repository context and technologies:
 ${JSON.stringify(context, null, 2)}
 
-Generate a list of automated One-Click Fixes to resolve the detected security or quality findings in this repository.
+We have grouped the codebase findings by title. Here is the list of unique finding groups:
+${JSON.stringify(groupedList, null, 2)}
+
+Generate a list of automated One-Click Fixes, one for each unique finding group.
 Return ONLY a JSON array matching this exact TypeScript structure (no markdown wrapper, raw JSON only):
 interface FixPatch {
-  id: string;
-  title: string;
-  issue: string; // A structured Markdown response for the specific finding being remediated.
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  filePath: string;
-  diff: string; // Unified git diff format showing the exact replacement code (use - for deleted lines, + for added lines, space for context)
+  id: string; // Unique index identifier (e.g. "fix-0", "fix-1")
+  title: string; // The exact finding title of the group
+  issue: string; // A structured Markdown response explaining the unified fix for all occurrences in this group.
+  severity: 'critical' | 'high' | 'medium' | 'low'; // The group's severity
+  filePath: string; // The primary file path of the group (primaryFile)
+  diff: string; // One unified git diff format showing the exact replacement code for the primary file
+  occurrences: number; // The exact group occurrences count
+  affectedFiles: string[]; // The list of affected files in the group (groupedList[i].affectedFiles)
 }
 
 For EACH fix in the array, the \`issue\` string MUST be formatted as a structured Markdown response with exactly these sections:

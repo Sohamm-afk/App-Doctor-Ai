@@ -184,11 +184,18 @@ export default function FixesPage() {
                   <Badge variant={patch.severity === 'critical' ? 'critical' : 'high'} dot>
                     {patch.severity}
                   </Badge>
-                  {isApplied && (
-                    <Badge variant="success" size="xs">
-                      Applied
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {patch.occurrences && (
+                      <span className="text-[10px] bg-bg-subtle text-text-muted px-2 py-0.5 rounded-full border border-border font-medium">
+                        {patch.occurrences} {patch.occurrences === 1 ? 'occurrence' : 'occurrences'}
+                      </span>
+                    )}
+                    {isApplied && (
+                      <Badge variant="success" size="xs">
+                        Applied
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                  <h4 className="text-body-sm font-semibold text-text mb-1">{patch.title}</h4>
                 <p className="text-caption text-text-muted mb-2 line-clamp-1">
@@ -214,11 +221,25 @@ export default function FixesPage() {
               <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
                 <div>
                   <h3 className="text-h4 font-semibold text-text">{selectedPatch.title}</h3>
-                  <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                    <span className="text-caption text-text-muted">Target:</span>
-                    <code className="text-[10px] text-secondary-600 bg-secondary-50 px-2 py-0.5 rounded font-mono">
-                      {selectedPatch.filePath}
-                    </code>
+                  <div className="flex flex-col gap-1 mt-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-caption text-text-muted font-semibold">Primary Target:</span>
+                      <code className="text-[10px] text-secondary-600 bg-secondary-50 px-2 py-0.5 rounded font-mono">
+                        {selectedPatch.filePath}
+                      </code>
+                    </div>
+                    {selectedPatch.affectedFiles && selectedPatch.affectedFiles.length > 0 && (
+                      <div className="flex flex-col gap-1 mt-1">
+                        <span className="text-[11px] text-text-muted font-semibold">Affected Files ({selectedPatch.occurrences || selectedPatch.affectedFiles.length}):</span>
+                        <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto pr-1">
+                          {selectedPatch.affectedFiles.map((file: string, fIdx: number) => (
+                            <code key={fIdx} className="text-[9px] text-text-muted bg-bg-subtle px-1.5 py-0.5 rounded border border-border font-mono">
+                              {file}
+                            </code>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <Button
