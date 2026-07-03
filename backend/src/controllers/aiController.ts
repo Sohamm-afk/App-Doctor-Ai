@@ -16,25 +16,49 @@ export class AiController {
 
     try {
       const context = ContextBuilderService.build(scanResult);
-      const prompt = `You are the AI CTO of AppDoctor AI, an automated code audit platform.
-Inspect the following repository scan analysis:
+      const prompt = `You are an experienced CTO reviewing a software project. Analyze the following repository scan context:
 ${JSON.stringify(context, null, 2)}
 
-Generate a detailed, technical, and actionable review divided into exactly these 8 sections:
-## Executive Summary
-## Architecture Review
-## Security Assessment
-## Performance Review
-## Production Readiness
-## Business Risks
-## Priority Recommendations
-## Deployment Advice
+Return exactly a JSON object matching this schema (do not wrap in markdown or backticks):
+{
+  "executive_summary": "Overall summary of the repository and its project architecture",
+  "strengths": ["list of major technical strengths of the project"],
+  "weaknesses": ["list of major security, performance or quality weaknesses"],
+  "technical_debt": "Detailed analysis of technical debt and maintenance requirements",
+  "production_readiness": "Assessment of production readiness, checking dependencies and configuration",
+  "recommendations": ["actionable recommendations for improvements and remediation"]
+}
 
-Use Markdown formatting. Under each section header, provide specific analysis relating directly to the technologies and findings in the scan result payload.
 CRITICAL LIMITATIONS: Do not invent, guess, or estimate details regarding live concurrent users, runtime telemetry (e.g. CPU/memory load), database response times, live cloud billing costs, Kubernetes scaling thresholds, or Redis recommendations. If these metrics are mentioned or requested, state them explicitly as "Not Determined".`;
 
-      const reviewText = await GeminiService.generateContent(prompt);
-      res.status(200).json({ review: reviewText });
+      const reviewText = await GeminiService.generateContent(prompt, true);
+      
+      let formattedReview = '';
+      try {
+        const parsed = JSON.parse(reviewText);
+        formattedReview = `## Executive Summary
+${parsed.executive_summary || ''}
+
+## Strengths
+${(parsed.strengths || []).map((s: string) => `- ${s}`).join('\n')}
+
+## Weaknesses
+${(parsed.weaknesses || []).map((w: string) => `- ${w}`).join('\n')}
+
+## Technical Debt
+${parsed.technical_debt || ''}
+
+## Production Readiness
+${parsed.production_readiness || ''}
+
+## Recommendations
+${(parsed.recommendations || []).map((r: string) => `- ${r}`).join('\n')}`;
+      } catch (err) {
+        console.error('[AiController] Failed to parse AI Review JSON from Gemini:', err);
+        formattedReview = reviewText;
+      }
+
+      res.status(200).json({ review: formattedReview });
     } catch (err: any) {
       next(err);
     }
