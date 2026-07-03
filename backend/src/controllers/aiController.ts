@@ -99,9 +99,6 @@ CRITICAL: Never simulate, invent, or guess details about concurrent users, live 
     }
   }
 
-  /**
-   * Generates automated fixes and patches.
-   */
   public static async generateFixes(req: Request, res: Response, next: NextFunction): Promise<void> {
     const { scanResult } = req.body;
     if (!scanResult) {
@@ -111,25 +108,54 @@ CRITICAL: Never simulate, invent, or guess details about concurrent users, live 
 
     try {
       const context = ContextBuilderService.build(scanResult);
-      const prompt = `You are a Senior Software Remediation Engineer. Inspect the security findings and quality findings of this repository scan:
+      const prompt = `You are a Senior Software Engineer auditing repository issues.
+Analyze the following repository context, findings, and technologies:
 ${JSON.stringify(context, null, 2)}
 
-Generate a list of automated One-Click Fixes to resolve the detected security or quality findings.
+Generate a list of automated One-Click Fixes to resolve the detected security or quality findings in this repository.
 Return ONLY a JSON array matching this exact TypeScript structure (no markdown wrapper, raw JSON only):
 interface FixPatch {
   id: string;
   title: string;
-  issue: string;
+  issue: string; // A structured Markdown response for the specific finding being remediated.
   severity: 'critical' | 'high' | 'medium' | 'low';
   filePath: string;
   diff: string; // Unified git diff format showing the exact replacement code (use - for deleted lines, + for added lines, space for context)
 }
 
+For EACH fix in the array, the \`issue\` string MUST be formatted as a structured Markdown response with exactly these sections:
+
+# Issue
+Brief explanation of the detected problem.
+
+# Why It Matters
+Explain the security, performance, or maintainability impact.
+
+# Recommended Fix
+Explain the preferred solution.
+
+# Code Example
+Generate production-ready code tailored to the detected framework and language.
+If the framework is:
+- Express -> Express solution
+- NestJS -> NestJS solution
+- React -> React solution
+- Next.js -> Next.js solution
+- Vue -> Vue solution
+- Python -> Python solution
+Do not generate generic code. Tailor the code syntax to the exact project technology and language.
+
+# Best Practices
+Provide 3-5 best practices.
+
+# References
+Mention official documentation (without inventing URLs).
+
 Rules:
-- Generate fixes ONLY for issues detected in the scan result findings.
-- If there are no security or quality issues detected, return an empty array [].
-- Make the diffs syntax-correct for the respective programming language.
-- Ensure the JSON returned is fully valid and parseable.
+- Never invent vulnerabilities.
+- Base everything on the repository context and the selected finding.
+- Tailor every fix to the detected technology stack.
+- Produce clean Markdown inside the \`issue\` field.
 - CRITICAL: Never generate fixes or recommendations for live scaling, Redis cache, Kubernetes, CPU/memory telemetry, or billing cost fixes.`;
 
       const responseJson = await GeminiService.generateContent(prompt, true);

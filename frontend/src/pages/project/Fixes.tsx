@@ -8,6 +8,60 @@ import { DiffViewer } from '@/components/code/CodeBlock';
 import { useToast } from '@/components/ui/Toast';
 import axios from 'axios';
 
+import { cn } from '@/utils';
+
+function formatMarkdown(text: string): React.ReactNode {
+  if (!text) return null;
+  if (!text.includes('#')) {
+    return <span className="text-body-sm text-text-muted">{text}</span>;
+  }
+
+  const lines = text.split('\n');
+  const rendered: React.ReactNode[] = [];
+  let inCodeBlock = false;
+  let codeLines: string[] = [];
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
+
+    if (line.startsWith('```')) {
+      if (inCodeBlock) {
+        inCodeBlock = false;
+        rendered.push(
+          <pre key={`code-${idx}`} className="bg-gray-950 p-4 rounded-xl border border-gray-800 font-mono text-caption text-emerald-400 overflow-x-auto my-2">
+            <code>{codeLines.join('\n')}</code>
+          </pre>
+        );
+        codeLines = [];
+      } else {
+        inCodeBlock = true;
+      }
+      continue;
+    }
+
+    if (inCodeBlock) {
+      codeLines.push(line);
+      continue;
+    }
+
+    if (line.startsWith('# ')) {
+      rendered.push(<h3 key={idx} className="text-body font-bold text-text mt-5 mb-2 border-b border-border pb-1">{line.slice(2)}</h3>);
+    } else if (line.startsWith('## ')) {
+      rendered.push(<h4 key={idx} className="text-body-sm font-semibold text-text mt-4 mb-1">{line.slice(3)}</h4>);
+    } else if (line.startsWith('- ')) {
+      rendered.push(<li key={idx} className="text-caption text-text-muted ml-4 list-disc pl-1 my-0.5">{line.slice(2)}</li>);
+    } else if (line.startsWith('* ')) {
+      rendered.push(<li key={idx} className="text-caption text-text-muted ml-4 list-disc pl-1 my-0.5">{line.slice(2)}</li>);
+    } else if (line.trim() === '') {
+      // rely on container spacing
+    } else {
+      rendered.push(<p key={idx} className="text-caption text-text-muted leading-relaxed my-1">{line}</p>);
+    }
+  }
+
+  return <div className="space-y-2 mt-2">{rendered}</div>;
+}
+
 export default function FixesPage() {
   const { id } = useParams<{ id: string }>();
   const { success, error } = useToast();
@@ -136,8 +190,15 @@ export default function FixesPage() {
                     </Badge>
                   )}
                 </div>
-                <h4 className="text-body-sm font-semibold text-text mb-1">{patch.title}</h4>
-                <p className="text-caption text-text-muted mb-2 line-clamp-1">{patch.issue}</p>
+                 <h4 className="text-body-sm font-semibold text-text mb-1">{patch.title}</h4>
+                <p className="text-caption text-text-muted mb-2 line-clamp-1">
+                  {patch.issue.includes('#')
+                    ? patch.issue
+                        .split('\n')
+                        .find((l: string) => l.trim().length > 0 && !l.startsWith('#'))
+                        ?.trim() || patch.title
+                    : patch.issue}
+                </p>
                 <code className="text-[10px] text-secondary-600 bg-secondary-50 px-2 py-0.5 rounded font-mono">
                   {patch.filePath}
                 </code>
@@ -153,9 +214,12 @@ export default function FixesPage() {
               <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
                 <div>
                   <h3 className="text-h4 font-semibold text-text">{selectedPatch.title}</h3>
-                  <p className="text-caption text-text-muted mt-1">
-                    Remediates: <strong>{selectedPatch.issue}</strong>
-                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                    <span className="text-caption text-text-muted">Target:</span>
+                    <code className="text-[10px] text-secondary-600 bg-secondary-50 px-2 py-0.5 rounded font-mono">
+                      {selectedPatch.filePath}
+                    </code>
+                  </div>
                 </div>
                 <Button
                   variant="primary"
@@ -168,8 +232,14 @@ export default function FixesPage() {
                 </Button>
               </div>
 
+              {/* Markdown remediation guidelines */}
+              <div className="mt-4 border-t border-border pt-4">
+                {formatMarkdown(selectedPatch.issue)}
+              </div>
+
               {/* Code diff */}
-              <div className="mt-4">
+              <div className="mt-6 border-t border-border pt-4">
+                <h4 className="text-body-sm font-semibold text-text mb-2">Suggested Code Modification (Unified Diff)</h4>
                 <DiffViewer
                   title={selectedPatch.filePath}
                   diff={selectedPatch.diff}
