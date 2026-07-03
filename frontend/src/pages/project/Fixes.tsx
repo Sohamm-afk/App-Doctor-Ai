@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Wrench, Shield, CheckCircle } from 'lucide-react';
@@ -62,6 +62,30 @@ function formatMarkdown(text: string): React.ReactNode {
   return <div className="space-y-2 mt-2">{rendered}</div>;
 }
 
+
+
+function getImpactSummary(issueMarkdown: string): string {
+  if (!issueMarkdown) return '';
+  const lines = issueMarkdown.split('\n');
+  const index = lines.findIndex(l => l.toLowerCase().startsWith('# why it matters'));
+  if (index !== -1) {
+    for (let i = index + 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('#')) break;
+      if (line.length > 0) return line;
+    }
+  }
+  // Fallback: first non-header line
+  return lines.find(l => l.trim().length > 0 && !l.startsWith('#'))?.trim() || '';
+}
+
+function getDetectedFramework(scanResult: any): string {
+  if (!scanResult) return '';
+  const tech = scanResult.metadata?.technology;
+  if (!tech) return '';
+  return tech.frontend || tech.backend || '';
+}
+
 export default function FixesPage() {
   const { id } = useParams<{ id: string }>();
   const { success, error } = useToast();
@@ -71,24 +95,87 @@ export default function FixesPage() {
   const [applying, setApplying] = useState(false);
   const [appliedList, setAppliedList] = useState<string[]>([]);
 
+  const localScanData = id ? localStorage.getItem(`scan_result_${id}`) : null;
+  const scanResult = localScanData ? JSON.parse(localScanData) : null;
+  const detectedFramework = getDetectedFramework(scanResult);
+
+  const groupedPatches = useMemo(() => {
+    if (!patches || patches.length === 0) return [];
+
+    const groupsMap = new Map<string, any[]>();
+    patches.forEach((patch) => {
+      const title = patch.title;
+      if (!groupsMap.has(title)) {
+        groupsMap.set(title, []);
+      }
+      groupsMap.get(title)!.push(patch);
+    });
+
+    const isTestOrExampleFile = (filePath: string) => {
+      const lower = filePath.toLowerCase();
+      return lower.includes('test') || lower.includes('example') || lower.includes('doc') || lower.includes('fixture');
+    };
+
+    const groupedList: any[] = [];
+    groupsMap.forEach((groupPatches, title) => {
+      // Sort to prioritize production source files
+      groupPatches.sort((a: any, b: any) => {
+        const aTest = isTestOrExampleFile(a.filePath || '');
+        const bTest = isTestOrExampleFile(b.filePath || '');
+        if (aTest && !bTest) return 1;
+        if (!aTest && bTest) return -1;
+        return 0;
+      });
+
+      const primaryPatch = groupPatches[0];
+      const allFiles = Array.from(new Set(groupPatches.map((p) => p.filePath).filter(Boolean)));
+      
+      const productionFiles = allFiles.filter(f => !isTestOrExampleFile(f));
+      const testExampleFiles = allFiles.filter(f => isTestOrExampleFile(f));
+
+      // Calculate occurrences
+      const occurrences = groupPatches.reduce((acc, p) => acc + (p.occurrences || 1), 0);
+
+      groupedList.push({
+        id: primaryPatch.id,
+        title,
+        severity: primaryPatch.severity || 'low',
+        occurrences,
+        affectedFiles: allFiles,
+        productionFiles,
+        testExampleFiles,
+        filePath: primaryPatch.filePath,
+        issue: primaryPatch.issue,
+        diff: primaryPatch.diff,
+        framework: detectedFramework
+      });
+    });
+
+    // Sort groups by severity: critical, high, medium, low
+    const severityWeight: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1, info: 1 };
+    groupedList.sort((a, b) => {
+      const aW = severityWeight[a.severity.toLowerCase()] || 0;
+      const bW = severityWeight[b.severity.toLowerCase()] || 0;
+      return bW - aW;
+    });
+
+    return groupedList;
+  }, [patches, detectedFramework]);
+
+  useEffect(() => {
+    if (groupedPatches.length > 0 && !selectedPatch) {
+      setSelectedPatch(groupedPatches[0]);
+    }
+  }, [groupedPatches, selectedPatch]);
+
   useEffect(() => {
     if (!id) return;
-    const localScanData = localStorage.getItem(`scan_result_${id}`);
-    if (!localScanData) {
-      setLoading(false);
-      return;
-    }
-
-    const scanResult = JSON.parse(localScanData);
     
     // Check if fixes are already cached
     const cachedFixes = localStorage.getItem(`one_click_fixes_${id}`);
     if (cachedFixes) {
       const parsed = JSON.parse(cachedFixes);
       setPatches(parsed);
-      if (parsed.length > 0) {
-        setSelectedPatch(parsed[0]);
-      }
       setLoading(false);
       return;
     }
@@ -100,9 +187,6 @@ export default function FixesPage() {
         const generatedFixes = data.fixes || [];
         setPatches(generatedFixes);
         localStorage.setItem(`one_click_fixes_${id}`, JSON.stringify(generatedFixes));
-        if (generatedFixes.length > 0) {
-          setSelectedPatch(generatedFixes[0]);
-        }
         setLoading(false);
       })
       .catch((err: any) => {
@@ -121,7 +205,6 @@ export default function FixesPage() {
     }, 1500);
   };
 
-  const localScanData = id ? localStorage.getItem(`scan_result_${id}`) : null;
   if (!localScanData && !loading) {
     return (
       <div className="card p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
@@ -169,22 +252,29 @@ export default function FixesPage() {
         {/* Left Side — List of Patches */}
         <div className="space-y-3">
           <h3 className="text-h4 font-semibold text-text mb-2">Available Patches</h3>
-          {patches.map((patch) => {
+          {groupedPatches.map((patch) => {
             const isApplied = appliedList.includes(patch.id);
-            const isSelected = selectedPatch.id === patch.id;
+            const isSelected = selectedPatch?.title === patch.title;
             return (
               <div
                 key={patch.id}
                 onClick={() => setSelectedPatch(patch)}
                 className={`card p-5 cursor-pointer transition-all ${
-                  isSelected ? 'ring-2 ring-primary-500 border-primary-500' : 'hover:bg-bg-subtle'
+                  isSelected ? 'ring-2 ring-primary-500 border-primary-500 bg-bg-subtle/40' : 'hover:bg-bg-subtle'
                 }`}
               >
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <Badge variant={patch.severity === 'critical' ? 'critical' : 'high'} dot>
-                    {patch.severity}
-                  </Badge>
-                  <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge variant={patch.severity === 'critical' ? 'critical' : patch.severity === 'high' ? 'high' : patch.severity === 'medium' ? 'medium' : 'low'} dot>
+                      {patch.severity}
+                    </Badge>
+                    {patch.framework && (
+                      <Badge variant="neutral" size="xs" className="bg-bg-subtle border-border text-text-muted capitalize">
+                        {patch.framework}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {patch.occurrences && (
                       <span className="text-[10px] bg-bg-subtle text-text-muted px-2 py-0.5 rounded-full border border-border font-medium">
                         {patch.occurrences} {patch.occurrences === 1 ? 'occurrence' : 'occurrences'}
@@ -197,18 +287,23 @@ export default function FixesPage() {
                     )}
                   </div>
                 </div>
-                 <h4 className="text-body-sm font-semibold text-text mb-1">{patch.title}</h4>
-                <p className="text-caption text-text-muted mb-2 line-clamp-1">
-                  {patch.issue.includes('#')
-                    ? patch.issue
-                        .split('\n')
-                        .find((l: string) => l.trim().length > 0 && !l.startsWith('#'))
-                        ?.trim() || patch.title
-                    : patch.issue}
+
+                <h4 className="text-body-sm font-semibold text-text mb-1">{patch.title}</h4>
+                <p className="text-caption text-text-muted mb-2 line-clamp-2 leading-relaxed">
+                  {getImpactSummary(patch.issue) || patch.title}
                 </p>
-                <code className="text-[10px] text-secondary-600 bg-secondary-50 px-2 py-0.5 rounded font-mono">
-                  {patch.filePath}
-                </code>
+
+                {/* Show affected files list */}
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {patch.affectedFiles?.slice(0, 2).map((file: string, idx: number) => (
+                    <code key={idx} className="text-[9px] text-text-muted bg-bg-subtle px-1.5 py-0.5 rounded border border-border font-mono truncate max-w-[120px]">
+                      {file.split('/').pop()}
+                    </code>
+                  ))}
+                  {patch.affectedFiles?.length > 2 && (
+                    <span className="text-[9px] text-text-muted self-center">+{patch.affectedFiles.length - 2} more</span>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -221,24 +316,57 @@ export default function FixesPage() {
               <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
                 <div>
                   <h3 className="text-h4 font-semibold text-text">{selectedPatch.title}</h3>
-                  <div className="flex flex-col gap-1 mt-2">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-caption text-text-muted font-semibold">Primary Target:</span>
+                  <div className="flex flex-col gap-2 mt-3">
+                    <div className="flex items-center gap-1.5 flex-wrap text-caption text-text-muted">
+                      <span className="font-semibold">Detected Framework:</span>
+                      {selectedPatch.framework ? (
+                        <Badge variant="neutral" size="xs" className="bg-bg-subtle border-border text-text-muted capitalize">
+                          {selectedPatch.framework}
+                        </Badge>
+                      ) : (
+                        <span className="font-mono">None</span>
+                      )}
+                      <span className="mx-1">•</span>
+                      <span className="font-semibold">Occurrences:</span>
+                      <span className="font-mono bg-bg-subtle px-1.5 py-0.5 rounded border border-border">{selectedPatch.occurrences}</span>
+                    </div>
+
+                    <div className="flex items-start gap-1.5 flex-wrap text-caption text-text-muted">
+                      <span className="font-semibold mt-0.5">Primary Target:</span>
                       <code className="text-[10px] text-secondary-600 bg-secondary-50 px-2 py-0.5 rounded font-mono">
                         {selectedPatch.filePath}
                       </code>
                     </div>
-                    {selectedPatch.affectedFiles && selectedPatch.affectedFiles.length > 0 && (
+
+                    {/* Production Files list */}
+                    {selectedPatch.productionFiles && selectedPatch.productionFiles.length > 0 && (
                       <div className="flex flex-col gap-1 mt-1">
-                        <span className="text-[11px] text-text-muted font-semibold">Affected Files ({selectedPatch.occurrences || selectedPatch.affectedFiles.length}):</span>
+                        <span className="text-[11px] text-text-muted font-semibold">Production Files ({selectedPatch.productionFiles.length}):</span>
                         <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto pr-1">
-                          {selectedPatch.affectedFiles.map((file: string, fIdx: number) => (
+                          {selectedPatch.productionFiles.map((file: string, fIdx: number) => (
                             <code key={fIdx} className="text-[9px] text-text-muted bg-bg-subtle px-1.5 py-0.5 rounded border border-border font-mono">
                               {file}
                             </code>
                           ))}
                         </div>
                       </div>
+                    )}
+
+                    {/* Collapsible Test & Example Files section */}
+                    {selectedPatch.testExampleFiles && selectedPatch.testExampleFiles.length > 0 && (
+                      <details className="mt-1 group border border-border rounded-lg bg-bg-subtle p-2">
+                        <summary className="cursor-pointer font-semibold text-[11px] text-text-muted hover:text-text select-none flex items-center justify-between">
+                          <span>Additional Test & Example Files ({selectedPatch.testExampleFiles.length})</span>
+                          <span className="text-[9px] text-text-muted group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div className="flex flex-wrap gap-1 mt-2 max-h-[120px] overflow-y-auto pr-1">
+                          {selectedPatch.testExampleFiles.map((file: string, fIdx: number) => (
+                            <code key={fIdx} className="text-[9px] text-text-muted bg-bg-subtle px-1.5 py-0.5 rounded border border-border font-mono">
+                              {file}
+                            </code>
+                          ))}
+                        </div>
+                      </details>
                     )}
                   </div>
                 </div>
