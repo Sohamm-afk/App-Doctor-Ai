@@ -34,6 +34,16 @@ export default function OverviewPage() {
     setLoading(false);
   }, [id]);
 
+  useEffect(() => {
+    const handleTrigger = () => {
+      setShowDeploymentReport(true);
+    };
+    window.addEventListener('trigger-deploy-report', handleTrigger);
+    return () => {
+      window.removeEventListener('trigger-deploy-report', handleTrigger);
+    };
+  }, []);
+
   if (!loading && !scanResult) {
     return (
       <div className="card p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
@@ -254,21 +264,6 @@ export default function OverviewPage() {
             Last scanned {project?.lastScannedAt ? formatRelativeTime(project.lastScannedAt) : 'never'}
           </p>
         </div>
-
-        {/* Premium Can I Deploy Trigger */}
-        <button
-          onClick={() => setShowDeploymentReport(true)}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-body-sm font-semibold shadow-sm transition-all duration-200 ${
-            deploymentDecision === 'APPROVED'
-              ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-600/20 shadow-emerald-500/10'
-              : deploymentDecision === 'APPROVED WITH WARNINGS'
-              ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600/20 shadow-amber-500/10'
-              : 'bg-red-500 hover:bg-red-600 text-white border-red-600/20 shadow-red-500/10'
-          }`}
-        >
-          <Zap size={15} className="animate-pulse" />
-          Can I Deploy?
-        </button>
       </div>
 
       {/* Deployment Readiness Assessment Modal */}

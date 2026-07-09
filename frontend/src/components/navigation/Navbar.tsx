@@ -247,6 +247,7 @@ export function Navbar({ onMobileMenuToggle }: NavbarProps) {
             size="sm"
             leftIcon={<Rocket size={14} />}
             className="hidden sm:flex"
+            onClick={() => window.dispatchEvent(new CustomEvent('trigger-deploy-report'))}
           >
             Can I Deploy?
           </Button>
