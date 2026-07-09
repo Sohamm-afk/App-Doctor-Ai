@@ -1,3 +1,11 @@
+export interface IndexedFile {
+  relativePath: string;
+  extension: string;
+  size: number;
+  isDirectory: boolean;
+  isImportant: boolean;
+}
+
 export interface ScanResult {
   folderCount: number;
   fileCount: number;
@@ -6,6 +14,10 @@ export interface ScanResult {
   extensions: Record<string, number>;
   largestFiles: { path: string; size: number }[];
   importantFiles: string[];
+  repoIndex: IndexedFile[];
+  analysis_mode?: 'Fast Scan' | 'Full Scan';
+  confidence?: number;
+  message?: string;
 }
 
 export interface TechnologyInfo {
@@ -16,12 +28,15 @@ export interface TechnologyInfo {
   packageManager?: string;
   deployment?: string;
   ciCd?: string;
+  dependencies?: string[];
+  devDependencies?: string[];
+  imports?: string[];
 }
 
 export interface RepositoryMetadata {
   project_name: string;
   repository_name: string;
-  project_type: 'Frontend' | 'Backend' | 'Full Stack' | 'Library' | 'CLI' | 'Unknown';
+  project_type: 'Frontend' | 'Backend' | 'Full Stack' | 'Library' | 'CLI' | 'Monorepo' | 'Desktop' | 'Mobile' | 'Unknown';
   languages: string[];
   frontend: string | null;
   backend: string | null;
@@ -69,10 +84,11 @@ export interface DeploymentFinding {
 }
 
 export interface ArchitectureMetadata {
-  pattern: 'MVC' | 'Monolith' | 'Layered' | 'Microservices' | 'Unknown';
+  pattern: any;
   type: string;
   nodes: { id: string; label: string; type: string; position: { x: number; y: number }; data: { technology?: string; health?: string } }[];
   edges: { id: string; source: string; target: string; label?: string }[];
+  summary?: any;
 }
 
 export interface LaunchScoreBreakdown {
@@ -98,4 +114,32 @@ export interface AnalysisResponse {
   deployment_findings: DeploymentFinding[];
   architecture: ArchitectureMetadata;
   launch_score: LaunchScoreBreakdown;
+  overview_summary?: {
+    repository_health: string;
+    security_posture: string;
+    performance: string;
+    deployment_readiness: string;
+    overall_recommendation: string;
+    confidence: number;
+  };
+  cloud_cost_assessment?: {
+    detected: boolean;
+    monthly_estimate: string;
+    annual_run_rate: string;
+    ai_savings: string;
+    why: string;
+    recommendations: string;
+    confidence: number;
+  };
+  scalability_assessment?: {
+    score: 'Excellent' | 'Good' | 'Moderate' | 'Limited';
+    explanation: string;
+    recommendations: string[];
+    confidence: number;
+    metrics: {
+      concurrentUsers: string;
+      dbUtilization: string;
+      queueDelay: string;
+    };
+  };
 }

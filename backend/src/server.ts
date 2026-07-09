@@ -1,6 +1,7 @@
 import app from './app';
 import { config } from './config';
 import fs from 'fs';
+import { SessionMemoryService } from './services/architecture/SessionMemoryService';
 
 // Assure required folder storage boundaries exist
 if (!fs.existsSync(config.TEMP_DIR)) {
@@ -9,6 +10,9 @@ if (!fs.existsSync(config.TEMP_DIR)) {
 if (!fs.existsSync(config.UPLOADS_DIR)) {
   fs.mkdirSync(config.UPLOADS_DIR, { recursive: true });
 }
+
+// Start session memory cleanup (evicts sessions idle for >2 hours, runs every 30 min)
+SessionMemoryService.startCleanup();
 
 app.listen(config.PORT, () => {
   console.log(`==================================================`);

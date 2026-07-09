@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: appdoctor-ai-backend
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: GEMINI_API_KEY
+        sync: false          # Set this in the Render dashboard
+      - key: CORS_ORIGIN
+        sync: false          # Set to your Vercel/Netlify frontend URL after deploy
+      - key: GIT_CLONE_TIMEOUT
+        value: 120000

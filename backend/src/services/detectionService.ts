@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import { ScanResult, TechnologyInfo } from '../types';
+import { ScanResult, TechnologyInfo, IndexedFile } from '../types';
 
 export class DetectionService {
   /**
    * Identifies technology stack components (frontend, backend, database, package manager, CI/CD)
    * from directory configurations, file content, and package dependencies.
+   * Completely query-driven from in-memory Repository Index to avoid blocking filesystem traversals.
    */
   public static async detectTechnologies(
     repoPath: string,
@@ -19,6 +20,12 @@ export class DetectionService {
     let deployment: string | undefined;
     let ciCd: string | undefined;
 
+    // Helper to check if file exists in the index
+    const indexHasFile = (relPath: string) => {
+      const clean = relPath.replace(/\\/g, '/').toLowerCase();
+      return (scanResult.repoIndex || []).some(f => !f.isDirectory && f.relativePath.toLowerCase() === clean);
+    };
+
     // 1. Language detection from extension list
     const ext = scanResult.extensions;
     if (ext['.js'] || ext['.jsx'] || ext['.mjs'] || ext['.cjs']) languages.push('JavaScript');
@@ -31,252 +38,335 @@ export class DetectionService {
     if (ext['.php']) languages.push('PHP');
     if (ext['.cpp'] || ext['.cc'] || ext['.cxx'] || ext['.h'] || ext['.hpp']) languages.push('C++');
 
-    // Helper to recursively find package.json files
-    const findPackageJsons = (dir: string): string[] => {
-      const results: string[] = [];
-      if (!fs.existsSync(dir)) return results;
-      try {
-        const entries = fs.readdirSync(dir, { withFileTypes: true });
-        for (const entry of entries) {
-          const name = entry.name;
-          const lowerName = name.toLowerCase();
-          if (entry.isDirectory()) {
-            if (
-              lowerName === 'node_modules' ||
-              lowerName === 'docs' ||
-              lowerName === 'examples' ||
-              lowerName === 'tests' ||
-              lowerName === 'coverage' ||
-              lowerName === 'dist' ||
-              lowerName === 'build' ||
-              lowerName === '.git'
-            ) {
-              continue;
-            }
-            results.push(...findPackageJsons(path.join(dir, name)));
-          } else if (entry.isFile() && lowerName === 'package.json') {
-            results.push(path.join(dir, name));
-          }
-        }
-      } catch {}
-      return results;
-    };
-
-    // 2. Read package.json dependencies recursively and merge them
+    // 2. Read package.json dependencies recursively from index
     const deps: Record<string, string> = {};
+    const collectedDependencies = new Set<string>();
+    const collectedDevDependencies = new Set<string>();
+    const collectedImports = new Set<string>();
     let rootPackageName = '';
-    const packageFiles = findPackageJsons(repoPath);
-
-    const frameworkScores = {
-      React: 0,
-      'Next.js': 0,
-      Vue: 0,
-      Angular: 0,
-      Svelte: 0,
-      Nuxt: 0,
-      Express: 0,
-      NestJS: 0,
-    };
+    
+    const packageFiles = (scanResult.repoIndex || [])
+      .filter(f => !f.isDirectory && f.relativePath.toLowerCase().endsWith('package.json') && 
+                   !f.relativePath.toLowerCase().includes('node_modules') &&
+                   !f.relativePath.toLowerCase().includes('dist') &&
+                   !f.relativePath.toLowerCase().includes('build'))
+      .map(f => f.relativePath);
 
     for (const pkgFile of packageFiles) {
       try {
-        const fileContent = fs.readFileSync(pkgFile, 'utf8');
+        const fullPkgPath = path.join(repoPath, pkgFile);
+        const fileContent = fs.readFileSync(fullPkgPath, 'utf8');
         const pkgData = JSON.parse(fileContent);
 
         // Track root package name for library matching
-        if (path.relative(repoPath, pkgFile) === 'package.json') {
+        if (pkgFile.toLowerCase() === 'package.json') {
           if (pkgData.name) {
             rootPackageName = pkgData.name.toLowerCase();
           }
         }
 
-        if (pkgData.dependencies) Object.assign(deps, pkgData.dependencies);
-        if (pkgData.devDependencies) Object.assign(deps, pkgData.devDependencies);
-        if (pkgData.peerDependencies) Object.assign(deps, pkgData.peerDependencies);
-        if (pkgData.optionalDependencies) Object.assign(deps, pkgData.optionalDependencies);
-
-        // Score frameworks - ignore examples, demo, playground, fixtures, docs, tests, test, coverage
-        const relPath = path.relative(repoPath, pkgFile).toLowerCase().replace(/\\/g, '/');
-        const isIgnored = 
-          relPath.includes('/examples/') || relPath.startsWith('examples/') ||
-          relPath.includes('/example/') || relPath.startsWith('example/') ||
-          relPath.includes('/demo/') || relPath.startsWith('demo/') ||
-          relPath.includes('/playground/') || relPath.startsWith('playground/') ||
-          relPath.includes('/fixtures/') || relPath.startsWith('fixtures/') ||
-          relPath.includes('/docs/') || relPath.startsWith('docs/') ||
-          relPath.includes('/tests/') || relPath.startsWith('tests/') ||
-          relPath.includes('/test/') || relPath.startsWith('test/') ||
-          relPath.includes('/coverage/') || relPath.startsWith('coverage/');
-
-        if (!isIgnored) {
-          const localDeps: Record<string, any> = {};
-          if (pkgData.dependencies) Object.assign(localDeps, pkgData.dependencies);
-          if (pkgData.devDependencies) Object.assign(localDeps, pkgData.devDependencies);
-          if (pkgData.peerDependencies) Object.assign(localDeps, pkgData.peerDependencies);
-          if (pkgData.optionalDependencies) Object.assign(localDeps, pkgData.optionalDependencies);
-
-          const name = (pkgData.name || '').toLowerCase();
-          if (name === 'react' || name === 'react-dom') frameworkScores['React']++;
-          if (name === 'next') frameworkScores['Next.js']++;
-          if (name === 'vue') frameworkScores['Vue']++;
-          if (name === 'express') frameworkScores['Express']++;
-
-          if (localDeps['react'] || localDeps['react-dom']) frameworkScores['React']++;
-          if (localDeps['next']) frameworkScores['Next.js']++;
-          if (localDeps['vue']) frameworkScores['Vue']++;
-          if (localDeps['@angular/core']) frameworkScores['Angular']++;
-          if (localDeps['svelte'] || localDeps['@sveltejs/kit']) frameworkScores['Svelte']++;
-          if (localDeps['nuxt']) frameworkScores['Nuxt']++;
-          if (localDeps['express']) frameworkScores['Express']++;
-          if (localDeps['@nestjs/core']) frameworkScores['NestJS']++;
+        if (pkgData.dependencies) {
+          Object.assign(deps, pkgData.dependencies);
+          Object.keys(pkgData.dependencies).forEach(d => collectedDependencies.add(d.toLowerCase()));
+        }
+        if (pkgData.devDependencies) {
+          Object.assign(deps, pkgData.devDependencies);
+          Object.keys(pkgData.devDependencies).forEach(d => collectedDevDependencies.add(d.toLowerCase()));
+        }
+        if (pkgData.peerDependencies) {
+          Object.assign(deps, pkgData.peerDependencies);
+          Object.keys(pkgData.peerDependencies).forEach(d => collectedDependencies.add(d.toLowerCase()));
+        }
+        if (pkgData.optionalDependencies) {
+          Object.assign(deps, pkgData.optionalDependencies);
+          Object.keys(pkgData.optionalDependencies).forEach(d => collectedDependencies.add(d.toLowerCase()));
         }
       } catch {}
     }
 
-    // Determine the highest scoring frontend and backend frameworks
-    let dominantFrontend: string | undefined;
-    let dominantBackend: string | undefined;
+    // Read Python configurations recursively from index
+    let pythonDeps = '';
+    const pyConfigs = ['pyproject.toml', 'requirements.txt', 'pipfile', 'poetry.lock'];
+    const pyFiles = (scanResult.repoIndex || [])
+      .filter(f => !f.isDirectory && pyConfigs.includes(path.basename(f.relativePath).toLowerCase()))
+      .map(f => f.relativePath);
 
-    let maxFrontendScore = 0;
-    const frontendFrameworks: (keyof typeof frameworkScores)[] = ['React', 'Next.js', 'Vue', 'Angular', 'Svelte', 'Nuxt'];
-    for (const fw of frontendFrameworks) {
-      if (frameworkScores[fw] > maxFrontendScore) {
-        maxFrontendScore = frameworkScores[fw];
-        dominantFrontend = fw;
-      }
-    }
-
-    let maxBackendScore = 0;
-    const backendFrameworks: (keyof typeof frameworkScores)[] = ['Express', 'NestJS', 'Next.js', 'Nuxt'];
-    for (const fw of backendFrameworks) {
-      if (frameworkScores[fw] > maxBackendScore) {
-        maxBackendScore = frameworkScores[fw];
-        dominantBackend = fw;
-      }
-    }
-
-    if (maxFrontendScore > 0) frontend = dominantFrontend;
-    if (maxBackendScore > 0) backend = dominantBackend;
-
-    // Prevent false positives for libraries themselves
-    if (rootPackageName === 'axios') {
-      frontend = undefined;
-      backend = undefined;
-    }
-    if (rootPackageName === 'express') {
-      frontend = undefined;
-      backend = undefined;
-    }
-
-    // 3. Python backend framework detection from root configurations only
-    let pyDeps = '';
-    if (fs.existsSync(path.join(repoPath, 'requirements.txt'))) {
+    for (const pyFile of pyFiles) {
       try {
-        pyDeps = await fs.promises.readFile(path.join(repoPath, 'requirements.txt'), 'utf8');
+        const fileContent = fs.readFileSync(path.join(repoPath, pyFile), 'utf8');
+        pythonDeps += '\n' + fileContent;
+        fileContent.split('\n').forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#')) {
+            const parts = trimmed.split(/[=<>]/);
+            if (parts[0]) {
+              collectedDependencies.add(parts[0].trim().toLowerCase());
+            }
+          }
+        });
       } catch {}
     }
-    if (fs.existsSync(path.join(repoPath, 'pyproject.toml'))) {
+    const pyLower = pythonDeps.toLowerCase();
+
+    // Read PHP configurations
+    let phpDeps = '';
+    const phpConfigs = ['composer.json', 'composer.lock'];
+    const phpFiles = (scanResult.repoIndex || [])
+      .filter(f => !f.isDirectory && phpConfigs.includes(path.basename(f.relativePath).toLowerCase()))
+      .map(f => f.relativePath);
+
+    for (const phpFile of phpFiles) {
       try {
-        pyDeps += '\n' + (await fs.promises.readFile(path.join(repoPath, 'pyproject.toml'), 'utf8'));
+        const fileContent = fs.readFileSync(path.join(repoPath, phpFile), 'utf8');
+        phpDeps += '\n' + fileContent;
+        if (phpFile.toLowerCase().endsWith('composer.json')) {
+          try {
+            const pkgData = JSON.parse(fileContent);
+            if (pkgData.require) {
+              Object.keys(pkgData.require).forEach(d => collectedDependencies.add(d.toLowerCase()));
+            }
+            if (pkgData['require-dev']) {
+              Object.keys(pkgData['require-dev']).forEach(d => collectedDevDependencies.add(d.toLowerCase()));
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+    const phpLower = phpDeps.toLowerCase();
+
+    // Read Java Maven/Gradle configurations
+    let javaDeps = '';
+    const javaConfigs = ['pom.xml', 'build.gradle', 'build.gradle.kts'];
+    const javaFiles = (scanResult.repoIndex || [])
+      .filter(f => !f.isDirectory && javaConfigs.includes(path.basename(f.relativePath).toLowerCase()))
+      .map(f => f.relativePath);
+
+    for (const javaFile of javaFiles) {
+      try {
+        const fileContent = fs.readFileSync(path.join(repoPath, javaFile), 'utf8');
+        javaDeps += '\n' + fileContent;
+        const depRegex = /<dependency>[\s\S]*?<artifactId>(.*?)<\/artifactId>[\s\S]*?<\/dependency>/g;
+        let match;
+        while ((match = depRegex.exec(fileContent)) !== null) {
+          if (match[1]) collectedDependencies.add(match[1].trim().toLowerCase());
+        }
+        const gradleRegex = /(?:implementation|api|testImplementation)\s+['"]([^'"]+)['"]/g;
+        while ((match = gradleRegex.exec(fileContent)) !== null) {
+          if (match[1]) {
+            const parts = match[1].split(':');
+            if (parts[1]) collectedDependencies.add(parts[1].trim().toLowerCase());
+          }
+        }
       } catch {}
     }
 
-    if (!backend) {
-      const lowerPyDeps = pyDeps.toLowerCase();
-      if (lowerPyDeps.includes('django') || fs.existsSync(path.join(repoPath, 'manage.py'))) {
-        backend = 'Django';
-      } else if (lowerPyDeps.includes('flask')) {
-        backend = 'Flask';
-      } else if (lowerPyDeps.includes('fastapi')) {
-        backend = 'FastAPI';
-      }
-    }
+    // Framework detection indicators
+    let hasReact = !!(deps['react'] || deps['react-dom'] || rootPackageName === 'react' || rootPackageName === 'react-dom');
+    let hasNext = !!(deps['next'] || rootPackageName === 'next' || indexHasFile('next.config.js') || indexHasFile('next.config.mjs'));
+    let hasVue = !!(deps['vue'] || deps['nuxt'] || rootPackageName === 'vue' || rootPackageName === 'nuxt');
+    let hasAngular = !!(deps['@angular/core'] || rootPackageName === 'angular');
+    let hasSvelte = !!(deps['svelte'] || deps['@sveltejs/kit'] || indexHasFile('svelte.config.js'));
+    let hasExpress = !!(deps['express'] || rootPackageName === 'express');
+    let hasNest = !!(deps['@nestjs/core'] || deps['@nestjs/common'] || rootPackageName === 'nestjs');
+    
+    let hasDjango = pyLower.includes('django') || indexHasFile('manage.py');
+    let hasFlask = pyLower.includes('flask');
+    let hasFastApi = pyLower.includes('fastapi');
+    
+    let hasSpringBoot = javaDeps.includes('spring-boot') || javaDeps.includes('springframework.boot');
+    let hasLaravel = phpLower.includes('laravel/') || indexHasFile('artisan');
 
-    // 3b. Java/Spring Boot framework detection
-    if (!backend) {
-      if (fs.existsSync(path.join(repoPath, 'pom.xml'))) {
-        try {
-          const pom = await fs.promises.readFile(path.join(repoPath, 'pom.xml'), 'utf8');
-          if (pom.includes('spring-boot-starter')) backend = 'Spring Boot';
-        } catch {}
-      } else if (fs.existsSync(path.join(repoPath, 'build.gradle'))) {
-        try {
-          const gradle = await fs.promises.readFile(path.join(repoPath, 'build.gradle'), 'utf8');
-          if (gradle.includes('org.springframework.boot')) backend = 'Spring Boot';
-        } catch {}
-      }
-    }
+    if (hasNext) frontend = 'Next.js';
+    else if (hasVue) frontend = 'Vue';
+    else if (hasAngular) frontend = 'Angular';
+    else if (hasSvelte) frontend = 'Svelte';
+    else if (hasReact) frontend = 'React';
 
-    // 3c. PHP/Laravel framework detection
-    if (!backend) {
-      if (fs.existsSync(path.join(repoPath, 'artisan')) || fs.existsSync(path.join(repoPath, 'composer.json'))) {
-        backend = 'Laravel';
-      }
-    }
+    if (hasNext) backend = 'Next.js';
+    else if (hasNest) backend = 'NestJS';
+    else if (hasExpress) backend = 'Express';
+    else if (hasDjango) backend = 'Django';
+    else if (hasFlask) backend = 'Flask';
+    else if (hasFastApi) backend = 'FastAPI';
+    else if (hasSpringBoot) backend = 'Spring Boot';
+    else if (hasLaravel) backend = 'Laravel';
 
-    // 3d. C#/ASP.NET framework detection
-    if (!backend && languages.includes('C#')) {
-      backend = 'ASP.NET';
+    // Prevent false positives for general libraries themselves
+    const libraryPackages = ['axios', 'lodash', 'react', 'react-dom', 'vue', 'angular', '@angular/core', 'svelte', 'lodash-es', 'jquery'];
+    if (libraryPackages.includes(rootPackageName)) {
+      frontend = undefined;
+      backend = undefined;
     }
 
     // 4. Database detection
-    if (deps['@prisma/client'] || deps['prisma']) {
-      database = 'Prisma';
-    } else if (deps['drizzle-orm']) {
-      database = 'Drizzle';
-    } else if (deps['typeorm']) {
-      database = 'TypeORM';
-    } else if (deps['sequelize']) {
-      database = 'Sequelize';
-    } else if (deps['mongoose'] || deps['mongodb']) {
-      database = 'MongoDB';
-    } else if (deps['redis'] || deps['ioredis']) {
-      database = 'Redis';
-    } else if (deps['pg'] || deps['postgres'] || deps['pg-promise']) {
-      database = 'PostgreSQL';
-    } else if (deps['mysql'] || deps['mysql2']) {
-      database = 'MySQL';
-    } else if (deps['sqlite3'] || deps['better-sqlite3']) {
-      database = 'SQLite';
+    const detectedDbs: string[] = [];
+    if (deps['@prisma/client'] || deps['prisma'] || indexHasFile('schema.prisma')) {
+      detectedDbs.push('Prisma');
+    }
+    if (deps['drizzle-orm'] || deps['drizzle-kit'] || indexHasFile('drizzle.config.ts') || indexHasFile('drizzle.config.js')) {
+      detectedDbs.push('Drizzle');
+    }
+    if (deps['typeorm'] || indexHasFile('ormconfig.json') || indexHasFile('ormconfig.js')) {
+      detectedDbs.push('TypeORM');
+    }
+    if (deps['mongoose']) {
+      detectedDbs.push('Mongoose');
+    }
+    if (deps['mongodb'] || pyLower.includes('pymongo') || pyLower.includes('mongoengine') || deps['mongoose']) {
+      detectedDbs.push('MongoDB');
+    }
+    if (deps['redis'] || deps['ioredis'] || pyLower.includes('redis')) {
+      detectedDbs.push('Redis');
+    }
+    if (deps['pg'] || deps['postgres'] || deps['pg-promise'] || pyLower.includes('psycopg') || javaDeps.includes('postgresql') || phpLower.includes('pdo_pgsql')) {
+      detectedDbs.push('Postgres');
+    }
+    if (deps['mysql'] || deps['mysql2'] || pyLower.includes('pymysql') || pyLower.includes('mysqlclient') || javaDeps.includes('mysql-connector') || phpLower.includes('pdo_mysql')) {
+      detectedDbs.push('MySQL');
+    }
+    if (deps['sqlite3'] || deps['better-sqlite3'] || pyLower.includes('sqlite3') || scanResult.extensions['.sqlite'] || scanResult.extensions['.db'] || scanResult.extensions['.sqlite3']) {
+      detectedDbs.push('SQLite');
+    }
+    if (deps['firebase'] || deps['firebase-admin'] || indexHasFile('firebase.json')) {
+      detectedDbs.push('Firebase');
+    }
+    if (deps['@supabase/supabase-js'] || deps['@supabase/postgrest-js']) {
+      detectedDbs.push('Supabase');
     }
 
-    if (!database && pyDeps) {
-      const lowerPy = pyDeps.toLowerCase();
-      if (lowerPy.includes('redis')) {
-        database = 'Redis';
-      } else if (lowerPy.includes('pymongo') || lowerPy.includes('mongoengine')) {
-        database = 'MongoDB';
-      } else if (lowerPy.includes('psycopg2') || lowerPy.includes('psycopg')) {
-        database = 'PostgreSQL';
-      } else if (lowerPy.includes('pymysql') || lowerPy.includes('mysql-connector-python') || lowerPy.includes('mysqlclient')) {
-        database = 'MySQL';
+    if (detectedDbs.length === 0) {
+      const codeDb = await this.findDatabaseInfo(repoPath, scanResult.repoIndex);
+      if (codeDb) {
+        if (codeDb === 'PostgreSQL') detectedDbs.push('Postgres');
+        else detectedDbs.push(codeDb);
       }
     }
 
-    if (!database && fs.existsSync(repoPath)) {
-      database = (await this.findDatabaseInfo(repoPath)) || undefined;
+    const dbSet = new Set(detectedDbs);
+    const finalDbs: string[] = [];
+    const allowedDbs = ['MongoDB', 'Postgres', 'MySQL', 'SQLite', 'Redis', 'Firebase', 'Supabase', 'Prisma', 'Drizzle', 'TypeORM', 'Mongoose'];
+    allowedDbs.forEach(d => {
+      if (dbSet.has(d)) finalDbs.push(d);
+    });
+
+    const repoNameLower = path.basename(repoPath).toLowerCase();
+    const isFrameworkRepo = 
+      repoNameLower.includes('nestjs') ||
+      repoNameLower.includes('nest-') ||
+      repoNameLower.includes('express') ||
+      repoNameLower.includes('django') ||
+      repoNameLower.includes('laravel') ||
+      repoNameLower.includes('spring') ||
+      repoNameLower.includes('react') ||
+      repoNameLower.includes('vue') ||
+      repoNameLower.includes('angular') ||
+      repoNameLower.includes('svelte');
+
+    const isFrameworkOrLib = isFrameworkRepo ||
+      repoNameLower.includes('library') ||
+      repoNameLower.includes('template') ||
+      repoNameLower.includes('boilerplate') ||
+      libraryPackages.includes(rootPackageName) ||
+      rootPackageName.includes('middleware') ||
+      rootPackageName.includes('plugin') ||
+      rootPackageName.includes('starter');
+
+    if (finalDbs.length > 0) {
+      if (isFrameworkOrLib) {
+        const databases: string[] = [];
+        const orms: string[] = [];
+        const drivers: string[] = [];
+        const integrations: string[] = [];
+        
+        // ORMs
+        if (deps['@prisma/client'] || deps['prisma'] || indexHasFile('schema.prisma')) {
+          orms.push('Prisma');
+        }
+        if (deps['drizzle-orm'] || deps['drizzle-kit'] || indexHasFile('drizzle.config.ts') || indexHasFile('drizzle.config.js')) {
+          orms.push('Drizzle');
+        }
+        if (deps['typeorm'] || indexHasFile('ormconfig.json') || indexHasFile('ormconfig.js')) {
+          orms.push('TypeORM');
+        }
+        if (deps['mongoose']) {
+          orms.push('Mongoose');
+        }
+        
+        // Drivers
+        if (deps['pg'] || deps['pg-promise'] || pyLower.includes('psycopg') || javaDeps.includes('postgresql')) {
+          drivers.push('Postgres Driver (pg)');
+        }
+        if (deps['mysql2'] || deps['mysql'] || pyLower.includes('pymysql') || javaDeps.includes('mysql-connector')) {
+          drivers.push('MySQL Driver (mysql2)');
+        }
+        if (deps['sqlite3'] || deps['better-sqlite3'] || pyLower.includes('sqlite3')) {
+          drivers.push('SQLite Driver (sqlite3)');
+        }
+        if (deps['redis'] || deps['ioredis'] || pyLower.includes('redis')) {
+          drivers.push('Redis Driver (ioredis)');
+        }
+        if (deps['mongodb'] || pyLower.includes('pymongo')) {
+          drivers.push('MongoDB Driver (mongodb)');
+        }
+        
+        // Databases
+        if (dbSet.has('Postgres')) databases.push('Postgres');
+        if (dbSet.has('MongoDB')) databases.push('MongoDB');
+        if (dbSet.has('MySQL')) databases.push('MySQL');
+        if (dbSet.has('SQLite')) databases.push('SQLite');
+        if (dbSet.has('Redis')) databases.push('Redis');
+        
+        // Integrations
+        if (deps['firebase'] || deps['firebase-admin'] || indexHasFile('firebase.json')) {
+          integrations.push('Firebase');
+        }
+        if (deps['@supabase/supabase-js'] || deps['@supabase/postgrest-js']) {
+          integrations.push('Supabase');
+        }
+        
+        const parts: string[] = [];
+        if (databases.length > 0) {
+          parts.push(`Supported Databases:\n${databases.map(d => `- ${d}`).join('\n')}`);
+        }
+        if (orms.length > 0) {
+          parts.push(`Supported ORMs:\n${orms.map(o => `- ${o}`).join('\n')}`);
+        }
+        if (drivers.length > 0) {
+          parts.push(`Supported Drivers:\n${drivers.map(d => `- ${d}`).join('\n')}`);
+        }
+        if (integrations.length > 0) {
+          parts.push(`Supported Integrations:\n${integrations.map(i => `- ${i}`).join('\n')}`);
+        }
+        
+        database = parts.length > 0 ? parts.join('\n\n') : `Supported Integrations:\n${finalDbs.map(d => `- ${d}`).join('\n')}`;
+      } else {
+        database = `Project Database: ${finalDbs.join(', ')}`;
+      }
+    } else {
+      database = undefined;
     }
 
     // 5. Deployment configurations detection
-    if (scanResult.importantFiles.some((f) => f.endsWith('Dockerfile'))) {
+    if (scanResult.importantFiles.some((f) => f.endsWith('Dockerfile')) || indexHasFile('Dockerfile')) {
       deployment = 'Docker';
     }
-    if (scanResult.importantFiles.some((f) => f.endsWith('docker-compose.yml') || f.endsWith('docker-compose.yaml'))) {
+    if (scanResult.importantFiles.some((f) => f.endsWith('docker-compose.yml') || f.endsWith('docker-compose.yaml')) || indexHasFile('docker-compose.yml') || indexHasFile('docker-compose.yaml')) {
       deployment = 'Docker Compose';
     }
-    if (scanResult.importantFiles.some((f) => f.endsWith('vercel.json'))) {
+    if (scanResult.importantFiles.some((f) => f.endsWith('vercel.json')) || indexHasFile('vercel.json')) {
       deployment = 'Vercel';
     }
-    if (scanResult.importantFiles.some((f) => f.endsWith('netlify.toml'))) {
+    if (scanResult.importantFiles.some((f) => f.endsWith('netlify.toml')) || indexHasFile('netlify.toml')) {
       deployment = 'Netlify';
     }
-    if (scanResult.importantFiles.some((f) => f.endsWith('render.yaml'))) {
+    if (scanResult.importantFiles.some((f) => f.endsWith('render.yaml')) || indexHasFile('render.yaml')) {
       deployment = 'Render';
     }
-    if (fs.existsSync(path.join(repoPath, 'railway.json')) || fs.existsSync(path.join(repoPath, '.railway'))) {
+    if (indexHasFile('railway.json') || indexHasFile('.railway')) {
       deployment = 'Railway';
     }
-    if (fs.existsSync(path.join(repoPath, 'k8s')) || fs.existsSync(path.join(repoPath, 'kubernetes'))) {
+    const hasK8sDir = (scanResult.repoIndex || []).some(f => f.relativePath.toLowerCase().startsWith('k8s') || f.relativePath.toLowerCase().startsWith('kubernetes'));
+    if (hasK8sDir || scanResult.importantFiles.some(f => f.includes('k8s/') || f.endsWith('.k8s.yaml'))) {
       deployment = 'Kubernetes';
     }
 
@@ -287,15 +377,75 @@ export class DetectionService {
       packageManager = 'yarn';
     } else if (scanResult.importantFiles.some((f) => f.endsWith('pnpm-lock.yaml'))) {
       packageManager = 'pnpm';
-    } else if (scanResult.importantFiles.some((f) => f.endsWith('requirements.txt') || f.endsWith('pyproject.toml') || f.endsWith('Pipfile'))) {
+    } else if (indexHasFile('poetry.lock')) {
+      packageManager = 'poetry';
+    } else if (indexHasFile('Pipfile') || indexHasFile('Pipfile.lock')) {
+      packageManager = 'pipenv';
+    } else if (scanResult.importantFiles.some((f) => f.endsWith('requirements.txt') || f.endsWith('pyproject.toml'))) {
       packageManager = 'pip';
+    } else if (scanResult.importantFiles.some((f) => f.endsWith('composer.lock') || f.endsWith('composer.json'))) {
+      packageManager = 'composer';
+    } else if (scanResult.importantFiles.some((f) => f.endsWith('Cargo.lock') || f.endsWith('Cargo.toml'))) {
+      packageManager = 'cargo';
+    } else if (scanResult.importantFiles.some((f) => f.endsWith('go.mod'))) {
+      packageManager = 'go';
+    } else if (scanResult.importantFiles.some((f) => f.endsWith('pom.xml'))) {
+      packageManager = 'maven';
+    } else if (scanResult.importantFiles.some((f) => f.endsWith('build.gradle') || f.endsWith('build.gradle.kts'))) {
+      packageManager = 'gradle';
     } else if (scanResult.importantFiles.some((f) => f.endsWith('package.json'))) {
-      packageManager = 'npm'; // fallback logic for JS
+      packageManager = 'npm'; // fallback
     }
 
     // 7. CI/CD workflows detection
-    if (scanResult.importantFiles.includes('.github/workflows')) {
+    const hasCicdDir = (scanResult.repoIndex || []).some(f => f.relativePath.toLowerCase().startsWith('.github/workflows'));
+    if (hasCicdDir || indexHasFile('.github/workflows')) {
       ciCd = 'GitHub Actions';
+    } else if (indexHasFile('.gitlab-ci.yml')) {
+      ciCd = 'GitLab CI';
+    } else if (indexHasFile('.circleci/config.yml')) {
+      ciCd = 'CircleCI';
+    } else if (indexHasFile('.travis.yml')) {
+      ciCd = 'Travis CI';
+    }
+
+    // Parse imports tree for code files
+    const codeFilesForImports = (scanResult.repoIndex || []).filter(f => {
+      if (f.isDirectory) return false;
+      const lower = f.relativePath.toLowerCase();
+      // Skip test, examples, docs, etc. to prevent false positives in dependencies!
+      if (
+        lower.includes('test') || 
+        lower.includes('example') || 
+        lower.includes('docs') || 
+        lower.includes('vendor') || 
+        lower.includes('node_modules')
+      ) return false;
+      return ['.js', '.ts', '.tsx', '.jsx', '.py', '.java', '.go'].includes(f.extension);
+    });
+
+    for (const file of codeFilesForImports.slice(0, 150)) {
+      try {
+        const fullPath = path.join(repoPath, file.relativePath);
+        const content = fs.readFileSync(fullPath, 'utf8');
+        
+        const jsImportRegex = /(?:import\s+.*\s+from\s+['"]|require\(['"])([^'"]+)['"]/gi;
+        let match;
+        while ((match = jsImportRegex.exec(content)) !== null) {
+          if (match[1] && !match[1].startsWith('.')) {
+            collectedImports.add(match[1].toLowerCase());
+          }
+        }
+
+        if (content.includes('createClient(')) collectedImports.add('createclient()');
+        if (content.includes('jwt.sign(') || content.includes('jwt.verify(')) collectedImports.add('jwt.sign()');
+
+        const pyImportRegex = /^\s*(?:import\s+(\w+)|from\s+(\w+)\s+import)/gm;
+        while ((match = pyImportRegex.exec(content)) !== null) {
+          const pkg = match[1] || match[2];
+          if (pkg) collectedImports.add(pkg.toLowerCase());
+        }
+      } catch {}
     }
 
     return {
@@ -306,83 +456,72 @@ export class DetectionService {
       packageManager,
       deployment,
       ciCd,
+      dependencies: Array.from(collectedDependencies),
+      devDependencies: Array.from(collectedDevDependencies),
+      imports: Array.from(collectedImports),
     };
   }
 
-  private static async findDatabaseInfo(dir: string): Promise<string | null> {
-    try {
-      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        const nameLower = entry.name.toLowerCase();
+  private static async findDatabaseInfo(repoPath: string, repoIndex: IndexedFile[]): Promise<string | null> {
+    const codeFiles = (repoIndex || []).filter(f => {
+      if (f.isDirectory) return false;
+      const lower = f.relativePath.toLowerCase();
+      if (
+        lower.includes('test') || 
+        lower.includes('example') || 
+        lower.includes('docs') || 
+        lower.includes('vendor') || 
+        lower.includes('node_modules')
+      ) return false;
+      return ['.js', '.ts', '.tsx', '.jsx', '.py', '.go', '.java'].includes(f.extension);
+    });
 
-        if (entry.isDirectory()) {
-          if (
-            nameLower === '.git' ||
-            nameLower === 'node_modules' ||
-            nameLower === 'dist' ||
-            nameLower === 'build' ||
-            nameLower === 'coverage' ||
-            nameLower === 'test' ||
-            nameLower === 'tests' ||
-            nameLower === 'example' ||
-            nameLower === 'examples' ||
-            nameLower === 'docs' ||
-            nameLower === 'vendor' ||
-            nameLower === 'tmp' ||
-            nameLower === 'temp' ||
-            nameLower === 'venv' ||
-            nameLower === '.venv' ||
-            nameLower === '__pycache__'
-          ) {
-            continue;
-          }
-          const subResult = await this.findDatabaseInfo(fullPath);
-          if (subResult) return subResult;
-        } else if (entry.isFile()) {
-          if (nameLower === 'schema.prisma') return 'Prisma';
-          if (nameLower.startsWith('drizzle.config.')) return 'Drizzle';
-          if (nameLower.startsWith('ormconfig.')) return 'TypeORM';
-          if (nameLower === '.sequelizerc') return 'Sequelize';
+    const cleanConfig = (repoIndex || []).find(f => {
+      if (f.isDirectory) return false;
+      const name = path.basename(f.relativePath).toLowerCase();
+      return name === 'schema.prisma' || name.startsWith('drizzle.config.') || name.startsWith('ormconfig.') || name === '.sequelizerc';
+    });
+    if (cleanConfig) {
+      const name = path.basename(cleanConfig.relativePath).toLowerCase();
+      if (name === 'schema.prisma') return 'Prisma';
+      if (name.startsWith('drizzle.config.')) return 'Drizzle';
+      if (name.startsWith('ormconfig.')) return 'TypeORM';
+      if (name === '.sequelizerc') return 'Sequelize';
+    }
 
-          const ext = path.extname(entry.name).toLowerCase();
-          if (['.js', '.ts', '.tsx', '.jsx', '.py', '.go', '.java'].includes(ext)) {
-            try {
-              const content = await fs.promises.readFile(fullPath, 'utf8');
-              const jsImportRegex = /(?:import\s+.*\s+from\s+['"]|require\(['"])(redis|ioredis|pg|postgres|mysql|mysql2|sqlite3|better-sqlite3|better-sqlite|mongodb|mongoose|sequelize|typeorm|drizzle-orm|@prisma\/client)['"]/i;
-              const pyImportRegex = /^\s*(?:import|from)\s+(redis|pymongo|mongoengine|psycopg2|psycopg|mysql|mysql\.connector|pymysql|sqlite3)\b/m;
+    // Limit scanning to first 10 files to keep scan time extremely low
+    for (const file of codeFiles.slice(0, 10)) {
+      try {
+        const fullPath = path.join(repoPath, file.relativePath);
+        const content = await fs.promises.readFile(fullPath, 'utf8');
+        
+        const jsImportRegex = /(?:import\s+.*\s+from\s+['"]|require\(['"])(redis|ioredis|pg|postgres|mysql|mysql2|sqlite3|better-sqlite3|better-sqlite|mongodb|mongoose|sequelize|typeorm|drizzle-orm|@prisma\/client)['"]/i;
+        const pyImportRegex = /^\s*(?:import|from)\s+(redis|pymongo|mongoengine|psycopg2|psycopg|mysql|mysql\.connector|pymysql|sqlite3)\b/m;
 
-              const jsMatch = content.match(jsImportRegex);
-              if (jsMatch) {
-                const matched = jsMatch[1].toLowerCase();
-                if (matched === 'redis' || matched === 'ioredis') return 'Redis';
-                if (matched === 'pg' || matched === 'postgres') return 'PostgreSQL';
-                if (matched === 'mysql' || matched === 'mysql2') return 'MySQL';
-                if (matched === 'sqlite3' || matched === 'better-sqlite3' || matched === 'better-sqlite') return 'SQLite';
-                if (matched === 'mongodb' || matched === 'mongoose') return 'MongoDB';
-                if (matched === 'sequelize') return 'Sequelize';
-                if (matched === 'typeorm') return 'TypeORM';
-                if (matched === 'drizzle-orm') return 'Drizzle';
-                if (matched === '@prisma/client') return 'Prisma';
-              }
-
-              const pyMatch = content.match(pyImportRegex);
-              if (pyMatch) {
-                const matched = pyMatch[1].toLowerCase();
-                if (matched === 'redis') return 'Redis';
-                if (matched === 'pymongo' || matched === 'mongoengine') return 'MongoDB';
-                if (matched === 'psycopg2' || matched === 'psycopg') return 'PostgreSQL';
-                if (matched === 'mysql' || matched === 'mysql\.connector' || matched === 'pymysql') return 'MySQL';
-                if (matched === 'sqlite3') return 'SQLite';
-              }
-            } catch {
-              // Ignore read errors
-            }
-          }
+        const jsMatch = content.match(jsImportRegex);
+        if (jsMatch) {
+          const matched = jsMatch[1].toLowerCase();
+          if (matched === 'redis' || matched === 'ioredis') return 'Redis';
+          if (matched === 'pg' || matched === 'postgres') return 'PostgreSQL';
+          if (matched === 'mysql' || matched === 'mysql2') return 'MySQL';
+          if (matched === 'sqlite3' || matched === 'better-sqlite3' || matched === 'better-sqlite') return 'SQLite';
+          if (matched === 'mongodb' || matched === 'mongoose') return 'MongoDB';
+          if (matched === 'sequelize') return 'Sequelize';
+          if (matched === 'typeorm') return 'TypeORM';
+          if (matched === 'drizzle-orm') return 'Drizzle';
+          if (matched === '@prisma/client') return 'Prisma';
         }
-      }
-    } catch {
-      // Ignore read errors
+
+        const pyMatch = content.match(pyImportRegex);
+        if (pyMatch) {
+          const matched = pyMatch[1].toLowerCase();
+          if (matched === 'redis') return 'Redis';
+          if (matched === 'pymongo' || matched === 'mongoengine') return 'MongoDB';
+          if (matched === 'psycopg2' || matched === 'psycopg') return 'PostgreSQL';
+          if (matched === 'mysql' || matched === 'mysql\.connector' || matched === 'pymysql') return 'MySQL';
+          if (matched === 'sqlite3') return 'SQLite';
+        }
+      } catch {}
     }
     return null;
   }

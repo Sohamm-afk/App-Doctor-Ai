@@ -9,9 +9,30 @@ import { config } from './config';
 
 const app = express();
 
-// Middleware setup
-app.use(cors({ origin: config.CORS_ORIGIN }));
-app.use(express.json());
+// ── CORS ─────────────────────────────────────────────────────────────────────
+// CORS_ORIGIN can be:
+//   "*"                              → allow all (dev only)
+//   "https://my-app.vercel.app"      → single origin
+//   "https://a.vercel.app,https://b.netlify.app" → comma-separated list
+const rawOrigins = (config.CORS_ORIGIN || '*').split(',').map(o => o.trim());
+const allowAllOrigins = rawOrigins.includes('*');
+
+app.use(cors({
+  origin: allowAllOrigins
+    ? '*'
+    : (origin, callback) => {
+        // Allow requests with no origin (server-to-server, curl, Render health checks)
+        if (!origin) return callback(null, true);
+        if (rawOrigins.includes(origin)) return callback(null, true);
+        callback(new Error(`CORS: origin '${origin}' not allowed`));
+      },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: !allowAllOrigins,
+}));
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(requestLogger);
 
 // Application Routing
@@ -31,3 +52,4 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 export default app;
+

@@ -3,7 +3,6 @@ import { Outlet } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Navbar }     from '@/components/navigation/Navbar';
 import { Sidebar }    from '@/components/navigation/Sidebar';
-import { CTOConsole } from '@/components/navigation/CTOConsole';
 import { cn } from '@/utils';
 
 // ─── App Shell ────────────────────────────────────────────────────
@@ -17,13 +16,9 @@ import { cn } from '@/utils';
 //  │ Security      │ │                                             │
 //  │ ...           │ │                                             │
 //  └───────────────┘ └─────────────────────────────────────────────┘
-//  ┌─────────────── CTO Console (fixed bottom, collapsible) ───────┐
-//  └───────────────────────────────────────────────────────────────┘
-
 const SIDEBAR_WIDTH           = 240;
 const SIDEBAR_COLLAPSED_WIDTH = 64;
 const NAVBAR_HEIGHT           = 60;
-const CONSOLE_HEIGHT          = 44; // collapsed height
 
 export function AppShell() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -48,7 +43,6 @@ export function AppShell() {
         )}
         style={{
           paddingTop:    NAVBAR_HEIGHT,
-          paddingBottom: CONSOLE_HEIGHT + 24,
         }}
         id="main-content"
         role="main"
@@ -59,8 +53,7 @@ export function AppShell() {
         </div>
       </motion.main>
 
-      {/* ── CTO Console ── */}
-      <CTOConsole />
+
     </div>
   );
 }

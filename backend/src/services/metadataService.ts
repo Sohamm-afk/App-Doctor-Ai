@@ -24,23 +24,47 @@ export class MetadataService {
       repositorySize = 'Medium';
     }
 
-    // 3. Classify Project Type based on detected stacks
-    let projectType: RepositoryMetadata['project_type'] = 'Unknown';
+    // 3. Classify Project Type based on detected stacks and files
+    const important = scanResult.importantFiles;
+    
+    const isMonorepo = important.some(f => f.endsWith('pnpm-workspace.yaml') || f.endsWith('lerna.json')) ||
+      (important.filter(f => f.endsWith('package.json') && !f.includes('docs/') && !f.includes('examples/') && !f.includes('tests/')).length > 2);
+
+    const isMobile = important.some(f => f.endsWith('pubspec.yaml') || f.endsWith('.xcodeproj') || f.endsWith('.xcworkspace') || f.startsWith('ios/') || f.startsWith('android/')) ||
+      techInfo.languages.includes('Swift') || techInfo.languages.includes('Kotlin') || techInfo.languages.includes('Dart');
+
+    const isDesktop = important.some(f => f.includes('src-tauri/') || f.endsWith('tauri.conf.json'));
+
+    const isCli = important.some(f => {
+      const lower = f.toLowerCase();
+      const isNestedIgnored = lower.includes('docs/') || lower.includes('examples/') || lower.includes('tests/') || lower.includes('playground/') || lower.includes('demo/') || lower.includes('sample/');
+      return !isNestedIgnored && (lower.includes('cli') || lower.includes('bin/'));
+    });
+
     const isReactRepo = repoName.toLowerCase() === 'react' || repoName.toLowerCase() === 'react-repository' || repoName.toLowerCase().includes('react');
 
-    if (techInfo.frontend === 'React' && isReactRepo) {
+    let projectType: RepositoryMetadata['project_type'] = 'Library';
+    if (isMonorepo) {
+      projectType = 'Monorepo';
+    } else if (isMobile) {
+      projectType = 'Mobile';
+    } else if (isDesktop) {
+      projectType = 'Desktop';
+    } else if (isCli) {
+      projectType = 'CLI';
+    } else if (techInfo.frontend === 'React' && isReactRepo) {
       projectType = 'Library';
     } else if (techInfo.frontend && techInfo.backend) {
       projectType = 'Full Stack';
     } else if (techInfo.frontend) {
-      projectType = 'Frontend';
+      const isSSR = techInfo.frontend === 'Next.js' || techInfo.frontend === 'Nuxt' || techInfo.frontend === 'Svelte';
+      if (isSSR && techInfo.database) {
+        projectType = 'Full Stack';
+      } else {
+        projectType = 'Frontend';
+      }
     } else if (techInfo.backend) {
       projectType = 'Backend';
-    } else if (scanResult.importantFiles.some((f) => {
-      const isNestedIgnored = f.includes('docs/') || f.includes('examples/') || f.includes('tests/') || f.includes('playground/') || f.includes('demo/') || f.includes('sample/');
-      return !isNestedIgnored && (f.toLowerCase().includes('cli') || f.includes('bin/'));
-    })) {
-      projectType = 'CLI';
     } else {
       projectType = 'Library';
     }

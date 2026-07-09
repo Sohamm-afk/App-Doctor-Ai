@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Sparkles } from 'lucide-react';
 import { cn, formatNumber, formatCurrency } from '@/utils';
 import { Skeleton } from '@/components/ui/Loading';
 import { Badge } from '@/components/ui/Badge';
@@ -470,6 +470,112 @@ export function UploadCard({ onUpload, title = "Upload Repository", description 
       </div>
       <h4 className="text-body-sm font-semibold text-text">{title}</h4>
       <p className="text-caption text-text-muted mt-1">{description}</p>
+    </CardBase>
+  );
+}
+
+// ─── Premium AI Recommendation Card ───────────────────────────────
+
+interface PremiumAIRecommendationCardProps {
+  description: string;
+  confidence?: number;
+  loading?: boolean;
+}
+
+const parseDescription = (desc: string, confidence: number) => {
+  if (!desc || !desc.startsWith('[TITLE]')) {
+    return {
+      title: 'AI Recommendation',
+      status: confidence >= 90 ? 'Optimized' : 'Needs Review',
+      statusVariant: (confidence >= 90 ? 'success' : 'warning') as any,
+      why: desc ? [desc] : [],
+      recommendation: '',
+    };
+  }
+
+  const sections = desc.split(/\[(TITLE|STATUS|STATUS_VARIANT|WHY|REC)\]/g);
+  let title = 'AI Recommendation';
+  let status = 'Optimized';
+  let statusVariant: any = 'success';
+  let why: string[] = [];
+  let recommendation = '';
+
+  for (let i = 1; i < sections.length; i += 2) {
+    const key = sections[i];
+    const val = sections[i + 1]?.trim() || '';
+    if (key === 'TITLE') title = val;
+    else if (key === 'STATUS') status = val;
+    else if (key === 'STATUS_VARIANT') statusVariant = val;
+    else if (key === 'WHY') {
+      why = val.split('\n').map(line => line.replace(/^-\s*/, '').trim()).filter(Boolean);
+    }
+    else if (key === 'REC') recommendation = val;
+  }
+
+  return { title, status, statusVariant, why, recommendation };
+};
+
+export function PremiumAIRecommendationCard({
+  description,
+  confidence = 96,
+  loading,
+}: PremiumAIRecommendationCardProps) {
+  if (loading) {
+    return <CardBase loading className="min-h-[140px]"><div/></CardBase>;
+  }
+
+  const { title, status, statusVariant, why, recommendation } = parseDescription(description, confidence);
+
+  return (
+    <CardBase className="relative overflow-hidden border border-primary-500/20 bg-gradient-to-br from-primary-50/40 via-bg-card to-primary-50/10 dark:from-primary-950/20 dark:via-bg-card dark:to-primary-950/5 p-6 sm:p-8">
+      {/* Subtle glowing decorative gradient */}
+      <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary-500/10 rounded-full blur-2xl pointer-events-none" />
+
+      <div className="flex flex-col gap-4">
+        {/* Title, Badge, Confidence Header */}
+        <div className="flex items-center justify-between border-b border-border pb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-emerald-600 flex items-center justify-center text-white shadow-md">
+              <Sparkles size={14} className="animate-pulse" />
+            </div>
+            <div>
+              <h3 className="text-body font-bold text-text">{title}</h3>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={statusVariant} size="sm" className="font-semibold capitalize">
+              {status}
+            </Badge>
+            <Badge variant="primary" className="bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 font-semibold" size="sm">
+              {confidence}% Confidence
+            </Badge>
+          </div>
+        </div>
+
+        {/* Why section */}
+        {why.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-body-xs font-bold text-text-muted uppercase tracking-wider">Why?</h4>
+            <ul className="list-disc pl-4 space-y-1">
+              {why.map((item, idx) => (
+                <li key={idx} className="text-body-sm text-text leading-relaxed">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Recommendation section */}
+        {recommendation && (
+          <div className="pt-3 border-t border-border/60">
+            <h4 className="text-body-xs font-bold text-text-muted uppercase tracking-wider mb-1">Recommendation</h4>
+            <p className="text-body-sm text-text font-normal leading-relaxed bg-primary-500/5 dark:bg-primary-500/10 p-3 rounded-lg border border-primary-500/10">
+              {recommendation}
+            </p>
+          </div>
+        )}
+      </div>
     </CardBase>
   );
 }
