@@ -1,4 +1,4 @@
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Monitor } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { motion } from 'framer-motion';
 
@@ -11,7 +11,8 @@ export function ThemeToggle() {
       whileHover={{ scale: 1.05 }}
       onClick={toggleTheme}
       className="w-9 h-9 rounded-lg flex items-center justify-center text-text-muted hover:bg-bg-subtle hover:text-text transition-colors border border-transparent hover:border-border"
-      aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+      aria-label={`Theme: ${theme}. Click to change.`}
+      title={`Theme: ${theme}`}
     >
       <motion.div
         key={theme}
@@ -20,9 +21,11 @@ export function ThemeToggle() {
         transition={{ duration: 0.2, ease: 'easeOut' }}
       >
         {theme === 'light' ? (
-          <Moon size={18} className="text-secondary-500 hover:text-primary-500 transition-colors" />
+          <Sun size={18} className="text-amber-500 hover:text-amber-600 transition-colors" />
+        ) : theme === 'dark' ? (
+          <Moon size={18} className="text-violet-400 hover:text-violet-500 transition-colors" />
         ) : (
-          <Sun size={18} className="text-amber-400 hover:text-amber-300 transition-colors" />
+          <Monitor size={18} className="text-emerald-500 hover:text-emerald-600 transition-colors" />
         )}
       </motion.div>
     </motion.button>

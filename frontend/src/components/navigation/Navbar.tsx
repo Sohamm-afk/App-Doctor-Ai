@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Search, Bell, Settings, User, ChevronDown,
@@ -156,6 +156,19 @@ export function Navbar({ onMobileMenuToggle }: NavbarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const { id: projectId } = useParams<{ id: string }>();
   const [projects, setProjects] = useState<Project[]>([]);
+  const navigate = useNavigate();
+  const [deployLoading, setDeployLoading] = useState(false);
+
+  useEffect(() => {
+    const handleStart = () => setDeployLoading(true);
+    const handleEnd = () => setDeployLoading(false);
+    window.addEventListener('deployment-loading-start', handleStart);
+    window.addEventListener('deployment-loading-end', handleEnd);
+    return () => {
+      window.removeEventListener('deployment-loading-start', handleStart);
+      window.removeEventListener('deployment-loading-end', handleEnd);
+    };
+  }, []);
 
   useEffect(() => {
     const listStr = localStorage.getItem('scanned_projects_list') || '[]';
@@ -247,7 +260,12 @@ export function Navbar({ onMobileMenuToggle }: NavbarProps) {
             size="sm"
             leftIcon={<Rocket size={14} />}
             className="hidden sm:flex"
-            onClick={() => window.dispatchEvent(new CustomEvent('trigger-deploy-report'))}
+            loading={deployLoading}
+            onClick={() => {
+              if (projectId) {
+                navigate(`/workspace/project/${projectId}/deploy`);
+              }
+            }}
           >
             Can I Deploy?
           </Button>

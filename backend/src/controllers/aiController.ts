@@ -127,11 +127,9 @@ While you wait, review your security and performance findings directly in the da
     } catch (err: any) {
       console.error('[AiController] chatMessage failed:', err.message || err);
 
-      const fallbackReply = `### 🎯 Executive Assessment
-My API connection is temporarily rate-limited. I cannot give you a grounded answer right now.
+      const fallbackReply = `Sorry about that, but my API connection is temporarily rate-limited. I can't access the repository data right now.
 
-### ✅ Recommendation
-Check the Security, Performance, and Technical Debt tabs in your dashboard — all scan findings are already rendered there. Retry this chat in about 30 seconds once the quota resets.`;
+Try checking the Security, Performance, and Technical Debt tabs in your dashboard — all scan findings are already rendered there. Feel free to retry our chat in about 30 seconds once the quota resets.`;
 
       res.status(200).json({ reply: fallbackReply, sessionActive: SessionMemoryService.has(sessionId) });
     }

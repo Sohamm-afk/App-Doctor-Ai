@@ -163,7 +163,7 @@ export default function PerformancePage() {
         {/* Counters */}
         <div className="card p-6 lg:col-span-2 space-y-4">
           <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Static Analysis Metrics</span>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {[
               { label: 'Critical Bottlenecks', count: criticalIssues },
               { label: 'Optimization Ops', count: optOps },

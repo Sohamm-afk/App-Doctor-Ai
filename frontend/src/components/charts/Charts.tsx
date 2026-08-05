@@ -54,8 +54,15 @@ function ChartContainer({ loading, height = 220, className, children }: {
 }) {
   if (loading) {
     return (
-      <div className={cn('flex items-center justify-center', className)} style={{ height }}>
-        <Spinner size="lg" />
+      <div className={cn('flex flex-col justify-end gap-2 p-2 border-b border-l border-border/30 animate-pulse', className)} style={{ height }}>
+        <div className="flex items-end justify-between w-full h-full pb-1 opacity-40">
+          <div className="bg-border rounded-t w-[12%] h-[30%]" />
+          <div className="bg-border rounded-t w-[12%] h-[60%]" />
+          <div className="bg-border rounded-t w-[12%] h-[45%]" />
+          <div className="bg-border rounded-t w-[12%] h-[80%]" />
+          <div className="bg-border rounded-t w-[12%] h-[50%]" />
+          <div className="bg-border rounded-t w-[12%] h-[65%]" />
+        </div>
       </div>
     );
   }
@@ -107,6 +114,9 @@ export function AppLineChart({ data, xKey, lines, className, height = 220, loadi
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4 }}
+            isAnimationActive={true}
+            animationDuration={1200}
+            animationEasing="ease-out"
           />
         ))}
       </ReLineChart>
@@ -152,6 +162,9 @@ export function AppAreaChart({ data, xKey, areas, className, height = 220, loadi
               stroke={color}
               strokeWidth={2}
               fill={`url(#grad-${area.key})`}
+              isAnimationActive={true}
+              animationDuration={1250}
+              animationEasing="ease-out"
             />
           );
         })}
@@ -197,6 +210,9 @@ export function AppBarChart({ data, xKey, bars, className, height = 220, loading
             name={bar.name ?? bar.key}
             fill={bar.color ?? CHART_COLOR_LIST[i % CHART_COLOR_LIST.length]}
             radius={[4, 4, 0, 0]}
+            isAnimationActive={true}
+            animationDuration={1200}
+            animationEasing="ease-out"
           />
         ))}
       </ReBarChart>
@@ -227,6 +243,8 @@ export function AppPieChart({ data, className, height = 220, loading, innerRadiu
           outerRadius="75%"
           dataKey="value"
           paddingAngle={2}
+          isAnimationActive={true}
+          animationDuration={1100}
         >
           {data.map((entry, i) => (
             <Cell key={entry.name} fill={entry.color ?? CHART_COLOR_LIST[i % CHART_COLOR_LIST.length]} />
@@ -256,7 +274,16 @@ export function AppRadarChart({ data, className, height = 220, loading, color = 
         <PolarGrid stroke="var(--color-border)" />
         <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
         <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-        <Radar name="Score" dataKey="value" stroke={color} fill={color} fillOpacity={0.15} strokeWidth={2} />
+        <Radar 
+          name="Score" 
+          dataKey="value" 
+          stroke={color} 
+          fill={color} 
+          fillOpacity={0.15} 
+          strokeWidth={2} 
+          isAnimationActive={true}
+          animationDuration={1250}
+        />
         <Tooltip content={<CustomTooltip />} />
       </ReRadarChart>
     </ChartContainer>

@@ -185,7 +185,7 @@ export default function ScalabilityPage() {
         {/* Counters */}
         <div className="card p-6 lg:col-span-2 space-y-4">
           <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Scalability Indicators</span>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="p-3 rounded-lg bg-bg-subtle/50 text-center border border-border/40">
               <span className="text-caption text-text-muted block">Horizontal Scaling</span>
               <span className="text-body-xs font-bold text-text block mt-1 truncate">

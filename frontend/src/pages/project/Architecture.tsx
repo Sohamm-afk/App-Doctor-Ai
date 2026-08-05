@@ -8,6 +8,7 @@ import 'reactflow/dist/style.css';
 import { Badge } from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
 import { PremiumAIRecommendationCard } from '@/components/cards/Cards';
+import { Skeleton, SkeletonCard } from '@/components/ui/Loading';
 
 import { collectEvidence } from '@/architecture/evidence/EvidenceCollector';
 import { detectTechnologies } from '@/architecture/detectors';
@@ -206,7 +207,12 @@ function ArchitectureFlow() {
             position: node.position || { x: 0, y: 0 },
             data: {
               label: (
-                <div className="p-5 w-[312px] h-[140px] flex flex-col justify-between text-left relative overflow-hidden bg-bg-card rounded-2xl border border-border shadow-md hover:shadow-lg hover:border-purple-500/30 transition-all duration-200 animate-fade-in">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 18, delay: Math.random() * 0.15 }}
+                  className="p-5 w-[312px] h-[140px] flex flex-col justify-between text-left relative overflow-hidden bg-bg-card rounded-2xl border border-border shadow-md hover:shadow-lg hover:border-purple-500/30 transition-all duration-200"
+                >
                   <div className="flex justify-between items-center border-b border-border/60 pb-2">
                     <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border ${getLayerColor(layerName)}`}>
                       {layerName}
@@ -247,7 +253,7 @@ function ArchitectureFlow() {
                       {rawData.confidence || node.confidence}
                     </span>
                   </div>
-                </div>
+                </motion.div>
               ),
               raw: { id: node.id, type: node.type, label: node.data?.label || node.label, data: rawData },
             },
@@ -279,7 +285,12 @@ function ArchitectureFlow() {
               position: node.position,
               data: {
                 label: (
-                  <div className="p-5 w-[312px] h-[140px] flex flex-col justify-between text-left relative overflow-hidden bg-bg-card rounded-2xl border border-border shadow-md">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+                    className="p-5 w-[312px] h-[140px] flex flex-col justify-between text-left relative overflow-hidden bg-bg-card rounded-2xl border border-border shadow-md"
+                  >
                     <div className="flex justify-between items-center border-b border-border/60 pb-2">
                       <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border ${getLayerColor(layerName)}`}>{layerName}</span>
                       <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
@@ -294,7 +305,7 @@ function ArchitectureFlow() {
                       </div>
                     </div>
                     <div className="border-t border-border/40 pt-2 mt-auto" />
-                  </div>
+                  </motion.div>
                 ),
                 raw: node.data.raw || node,
               },
@@ -343,79 +354,108 @@ Establish boundary validation checks at the application controller level and imp
       </motion.div>
 
       {/* AI Loading State */}
-      {loading && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="card p-8 flex flex-col items-center justify-center gap-4 border border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-bg-card">
-          <div className="relative">
-            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-              <GitBranch size={24} className="text-purple-500 animate-pulse" />
-            </div>
-            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-purple-500 animate-ping" />
-          </div>
-          <div className="text-center">
-            <p className="text-body font-bold text-text">Generating Architecture Diagram</p>
-            <p className="text-body-sm text-text-muted mt-1">AI Principal Architect is analyzing your repository structure…</p>
-          </div>
-          <div className="flex gap-1.5 mt-2">
-            {[0, 0.15, 0.3].map((delay, i) => (
-              <div key={i} className="w-2 h-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: `${delay}s` }} />
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Summary Banner */}
-      {!loading && nodes.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="card p-6 bg-gradient-to-r from-bg-card via-bg-card to-purple-500/5 border border-border shadow-sm">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-body font-bold text-text flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse" />
-                Enterprise Architecture Flow Summary
-              </h3>
-              <Badge variant="primary" className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-semibold py-1 px-3">
-                Complexity: {archResult?.summary?.complexity || 'Low'}
-              </Badge>
-            </div>
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-pulse">
+          {/* Left panel placeholder (canvas skeleton) */}
+          <div className="lg:col-span-2 relative h-[500px] border border-border bg-bg-card rounded-2xl flex flex-col items-center justify-center p-6 shadow-sm overflow-hidden">
+            {/* Pulsing blurred SVG graph blueprint */}
+            <svg className="absolute inset-0 w-full h-full opacity-10 dark:opacity-5 pointer-events-none animate-pulse" viewBox="0 0 500 400">
+              <circle cx="250" cy="200" r="40" fill="currentColor" />
+              <circle cx="120" cy="100" r="30" fill="currentColor" />
+              <circle cx="380" cy="100" r="30" fill="currentColor" />
+              <circle cx="120" cy="300" r="30" fill="currentColor" />
+              <circle cx="380" cy="300" r="30" fill="currentColor" />
+              <path d="M 120 100 L 250 200 M 380 100 L 250 200 M 120 300 L 250 200 M 380 300 L 250 200" stroke="currentColor" strokeWidth="2" strokeDasharray="5,5" />
+            </svg>
             
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-              <div className="space-y-1">
-                <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider block">Repository Type</span>
-                <span className="text-body-sm font-bold text-text">
-                  {(archResult as any)?.repositoryType || archResult?.summary?.type || 'Detected'}
-                </span>
+            <div className="z-10 flex flex-col items-center text-center space-y-4 max-w-sm animate-none">
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                  <GitBranch size={24} className="text-purple-500 animate-pulse" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-purple-500 animate-ping" />
               </div>
               <div className="space-y-1">
-                <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider block">Architecture Pattern</span>
-                <span className="text-body-sm font-bold text-text">
-                  {(archResult as any)?.architecturePattern || archResult?.summary?.pattern || 'Detected'}
-                </span>
+                <h3 className="text-body font-bold text-text">Tracing Codebase Topography</h3>
+                <p className="text-caption text-text-muted mt-1">
+                  Mapping import paths and structural relationships for this repository...
+                </p>
               </div>
-              <div className="space-y-1">
-                <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider block">Components</span>
-                <span className="text-body-sm font-bold text-text">{archResult?.summary?.componentsCount || nodes.length} Detected</span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider block">Framework</span>
-                <span className="text-body-sm font-bold text-text">
-                  {archResult?.summary?.framework || 'None Detected'}
-                </span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider block">Database</span>
-                <span className="text-body-sm font-bold text-text">
-                  {archResult?.summary?.database || 'None Detected'}
-                </span>
+              <div className="w-48 bg-border h-1.5 rounded-full overflow-hidden">
+                <div className="bg-primary-500 h-full rounded-full animate-pulse" style={{ width: '45%' }} />
               </div>
             </div>
-
-            {archResult?.summary?.aiSummary && (
-              <div className="mt-3 pt-3 border-t border-border/60 text-body-sm text-text leading-relaxed bg-bg-subtle/30 p-3 rounded-lg border border-border">
-                <strong>AI Analysis:</strong> {archResult.summary.aiSummary}
-              </div>
-            )}
           </div>
-        </motion.div>
-      )}
+
+          {/* Right panel placeholder (details pane skeleton) */}
+          <div className="lg:col-span-1 card p-6 space-y-6">
+            <div className="space-y-2">
+              <Skeleton height={20} className="w-1/2" />
+              <Skeleton height={12} className="w-1/3" />
+            </div>
+            <div className="space-y-3">
+              <Skeleton height={14} className="w-full" />
+              <Skeleton height={14} className="w-5/6" />
+              <Skeleton height={14} className="w-2/3" />
+            </div>
+            <Skeleton height={150} rounded="lg" />
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Summary Banner */}
+          {nodes.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="card p-6 bg-gradient-to-r from-bg-card via-bg-card to-purple-500/5 border border-border shadow-sm">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b border-border pb-3">
+                  <h3 className="text-body font-bold text-text flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse" />
+                    Enterprise Architecture Flow Summary
+                  </h3>
+                  <Badge variant="primary" className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-semibold py-1 px-3">
+                    Complexity: {archResult?.summary?.complexity || 'Low'}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider block">Repository Type</span>
+                    <span className="text-body-sm font-bold text-text">
+                      {(archResult as any)?.repositoryType || archResult?.summary?.type || 'Detected'}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider block">Architecture Pattern</span>
+                    <span className="text-body-sm font-bold text-text">
+                      {(archResult as any)?.architecturePattern || archResult?.summary?.pattern || 'Detected'}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider block">Components</span>
+                    <span className="text-body-sm font-bold text-text">{archResult?.summary?.componentsCount || nodes.length} Detected</span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider block">Framework</span>
+                    <span className="text-body-sm font-bold text-text">
+                      {archResult?.summary?.framework || 'None Detected'}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-text-muted font-semibold uppercase tracking-wider block">Database</span>
+                    <span className="text-body-sm font-bold text-text">
+                      {archResult?.summary?.database || 'None Detected'}
+                    </span>
+                  </div>
+                </div>
+
+                {archResult?.summary?.aiSummary && (
+                  <div className="mt-3 pt-3 border-t border-border/60 text-body-sm text-text leading-relaxed bg-bg-subtle/30 p-3 rounded-lg border border-border">
+                    <strong>AI Analysis:</strong> {archResult.summary.aiSummary}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
 
       {/* Workspace Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 transition-all duration-300">
@@ -561,6 +601,8 @@ Establish boundary validation checks at the application controller level and imp
           </div>
         )}
       </div>
+    </>
+  )}
 
       {/* AI Recommendation Card */}
       <PremiumAIRecommendationCard description={getArchitectureRecommendation()} confidence={98} />

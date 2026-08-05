@@ -96,18 +96,21 @@
   /* Colors */
   --color-primary:          #10B981;
   --color-primary-light:    #064E3B;
-  --color-primary-dark:     #D1FAE5;
-  --color-secondary:        #94A3B8;
-  --color-bg:               #0A0F1D; /* Deep dark blue-gray */
-  --color-bg-card:          #111827; /* Tailwind gray-900 */
-  --color-bg-subtle:        #1F2937; /* Tailwind gray-800 */
-  --color-bg-muted:         #374151; /* Tailwind gray-700 */
-  --color-text:             #F9FAFB; /* Tailwind gray-50 */
-  --color-text-muted:       #9CA3AF; /* Tailwind gray-400 */
-  --color-text-subtle:      #6B7280; /* Tailwind gray-500 */
-  --color-border:           #1F2937; /* Tailwind gray-800 */
-  --color-border-light:     #2D3748; /* Slightly lighter gray */
-  --color-border-strong:    #4B5563; /* Tailwind gray-600 */
+  --color-primary-dark:     #A7F3D0;
+  --color-secondary:        #9CA3AF;
+  
+  --color-bg:               #09090B; /* Handcrafted rich charcoal background */
+  --color-bg-card:          #16161A; /* Handcrafted card dark surface */
+  --color-bg-subtle:        #222226; /* Handcrafted subtle card surface */
+  --color-bg-muted:         #2D2D34;
+  
+  --color-text:             #F4F4F5; /* Crisp readable light gray */
+  --color-text-muted:       #A1A1AA; /* readable text muted */
+  --color-text-subtle:      #71717A;
+  
+  --color-border:           #27272A; /* Handcrafted dark border */
+  --color-border-light:     #3F3F46;
+  --color-border-strong:    #52525B;
 
   /* Primary Scale - shifted for dark mode */
   --color-primary-50:       #022C22;
@@ -184,7 +187,7 @@
 
   /* Focus ring — accessible and stylish */
   :focus-visible {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white;
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-bg-card;
   }
 
   /* Remove focus for mouse users */
@@ -212,6 +215,36 @@
     background-color: #D1FAE5;
     color: #047857;
   }
+
+  /* Smooth Theme transitions */
+  body, 
+  header, 
+  footer, 
+  section, 
+  .card, 
+  button, 
+  a, 
+  span, 
+  p, 
+  h1, h2, h3, h4, h5, h6, 
+  svg, 
+  path, 
+  circle, 
+  line, 
+  rect, 
+  .border,
+  .bg-gradient-to-br,
+  .bg-gradient-to-r,
+  .bg-gradient-to-tr {
+    transition: background-color 280ms ease-in-out,
+                background-image 280ms ease-in-out,
+                color 280ms ease-in-out,
+                border-color 280ms ease-in-out,
+                box-shadow 280ms ease-in-out,
+                fill 280ms ease-in-out,
+                stroke 280ms ease-in-out,
+                opacity 280ms ease-in-out;
+  }
 }
 
 /* ─── Component Layer ────────────────────────────────────────────── */
@@ -221,10 +254,10 @@
     @apply bg-bg-card rounded-xl border border-border shadow-card transition-all duration-200;
   }
   .card-hover {
-    @apply hover:shadow-card-hover hover:-translate-y-0.5;
+    @apply hover:shadow-card-hover hover:-translate-y-0.5 hover:border-emerald-500/30 dark:hover:border-emerald-500/20;
   }
   .card-clickable {
-    @apply cursor-pointer hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-card;
+    @apply cursor-pointer hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-card hover:border-emerald-500/30 dark:hover:border-emerald-500/20;
   }
 
   /* Section container */

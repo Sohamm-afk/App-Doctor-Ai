@@ -113,10 +113,30 @@ export function LoadingOverlay({ label = 'Loading…' }: { label?: string }) {
 
 export function PageLoading() {
   return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <div className="flex flex-col items-center gap-4">
-        <Spinner size="xl" />
-        <p className="text-body-sm text-text-muted">Loading…</p>
+    <div className="space-y-6 animate-pulse">
+      {/* Header skeleton */}
+      <div className="space-y-2 pb-5 border-b border-border/50">
+        <Skeleton height={28} className="w-48" />
+        <Skeleton height={14} className="w-80" />
+      </div>
+      
+      {/* Dashboard cards skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <SkeletonCard className="h-40" />
+        <SkeletonCard className="h-40" />
+        <SkeletonCard className="h-40" />
+      </div>
+
+      {/* Grid content skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 card p-6 space-y-4">
+          <Skeleton height={20} className="w-1/4" />
+          <SkeletonText lines={4} />
+        </div>
+        <div className="card p-6 space-y-4">
+          <Skeleton height={20} className="w-1/2" />
+          <Skeleton height={100} rounded="lg" />
+        </div>
       </div>
     </div>
   );

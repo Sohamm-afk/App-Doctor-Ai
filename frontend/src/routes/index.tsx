@@ -26,6 +26,7 @@ const AICTOPage        = lazy(() => import('@/pages/project/AICTO'));
 const FixesPage        = lazy(() => import('@/pages/project/Fixes'));
 const ReportsPage      = lazy(() => import('@/pages/project/Reports'));
 const SettingsPage     = lazy(() => import('@/pages/project/Settings'));
+const DeploymentReadiness = lazy(() => import('@/pages/project/DeploymentReadiness'));
 
 // ─── Suspense wrapper ─────────────────────────────────────────────
 
@@ -69,6 +70,7 @@ const router = createBrowserRouter([
           { path: 'fixes',         element: <Page><FixesPage         /></Page> },
           { path: 'reports',       element: <Page><ReportsPage       /></Page> },
           { path: 'settings',      element: <Page><SettingsPage      /></Page> },
+          { path: 'deploy',        element: <Page><DeploymentReadiness /></Page> },
         ],
       },
     ],

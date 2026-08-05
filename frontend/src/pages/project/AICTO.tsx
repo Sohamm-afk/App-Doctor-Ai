@@ -497,9 +497,9 @@ What would you like to dive into?`,
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-5 h-[calc(100vh-140px)]">
+    <div className="flex flex-col lg:flex-row gap-5 h-auto lg:h-[calc(100vh-140px)]">
       {/* Chat pane */}
-      <div className="flex-1 card flex flex-col overflow-hidden min-h-[400px]">
+      <div className="flex-1 card flex flex-col overflow-hidden min-h-[450px] lg:min-h-0">
         {/* Chat Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-bg-subtle flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -605,7 +605,7 @@ What would you like to dive into?`,
               <Shuffle size={11} />
             </button>
           </div>
-          <div className="px-4 pb-2.5 grid grid-cols-2 gap-1.5">
+          <div className="px-4 pb-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {suggestedQuestions.map((q, i) => (
               <motion.button
                 key={q}

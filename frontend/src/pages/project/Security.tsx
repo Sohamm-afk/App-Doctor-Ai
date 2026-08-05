@@ -142,7 +142,7 @@ export default function SecurityPage() {
             {/* Severity Counters */}
             <div className="card p-6 lg:col-span-2 space-y-4">
               <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Vulnerability Distribution</span>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                   { label: 'Critical', count: criticalCount, color: 'bg-red-600' },
                   { label: 'High', count: highCount, color: 'bg-red-500' },

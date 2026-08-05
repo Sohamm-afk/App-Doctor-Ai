@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus, Sparkles } from 'lucide-react';
 import { cn, formatNumber, formatCurrency } from '@/utils';
@@ -65,12 +66,39 @@ export function MetricCard({
   title, value, unit, change, changeLabel, icon, trend, trendPositive = true,
   format = 'number', loading, className, onClick,
 }: MetricCardProps) {
+  const [currentVal, setCurrentVal] = useState<number | string>(value);
+
+  useEffect(() => {
+    if (typeof value !== 'number') {
+      setCurrentVal(value);
+      return;
+    }
+    let start = 0;
+    const end = value;
+    if (start === end) {
+      setCurrentVal(end);
+      return;
+    }
+    const duration = 1000;
+    const incrementTime = Math.max(Math.floor(duration / Math.max(end, 1)), 15);
+    const timer = setInterval(() => {
+      start += Math.ceil(end / (duration / incrementTime));
+      if (start >= end) {
+        clearInterval(timer);
+        setCurrentVal(end);
+      } else {
+        setCurrentVal(start);
+      }
+    }, incrementTime);
+    return () => clearInterval(timer);
+  }, [value]);
+
   const displayValue = () => {
-    if (typeof value === 'string') return value;
-    if (format === 'currency') return formatCurrency(value);
-    if (format === 'number')   return formatNumber(value);
-    if (format === 'percent')  return `${value}%`;
-    return String(value);
+    if (typeof currentVal === 'string') return currentVal;
+    if (format === 'currency') return formatCurrency(currentVal as number);
+    if (format === 'number')   return formatNumber(currentVal as number);
+    if (format === 'percent')  return `${currentVal}%`;
+    return String(currentVal);
   };
 
   const trendIcon = trend === 'up'
@@ -132,6 +160,29 @@ const recommendationConfig: Record<LaunchRecommendation, { label: string; color:
 export function LaunchScoreCard({
   score, recommendation, breakdown, loading, className,
 }: LaunchScoreCardProps) {
+  const [currentScore, setCurrentScore] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = score;
+    if (start === end) {
+      setCurrentScore(end);
+      return;
+    }
+    const duration = 1200;
+    const incrementTime = Math.max(Math.floor(duration / Math.max(end, 1)), 15);
+    const timer = setInterval(() => {
+      start += Math.ceil(end / (duration / incrementTime));
+      if (start >= end) {
+        clearInterval(timer);
+        setCurrentScore(end);
+      } else {
+        setCurrentScore(start);
+      }
+    }, incrementTime);
+    return () => clearInterval(timer);
+  }, [score]);
+
   if (loading) {
     return <CardBase loading className={className}><div/></CardBase>;
   }
@@ -148,18 +199,19 @@ export function LaunchScoreCard({
         <div className="relative flex-shrink-0">
           <svg width="100" height="100" viewBox="0 0 100 100" role="img" aria-label={`Launch score: ${score}`}>
             <circle cx="50" cy="50" r={r} fill="none" stroke="#E5E7EB" strokeWidth="8" />
-            <circle
+            <motion.circle
               cx="50" cy="50" r={r} fill="none"
               stroke={scoreColor} strokeWidth="8"
               strokeDasharray={circ}
-              strokeDashoffset={dashOffset}
+              initial={{ strokeDashoffset: circ }}
+              animate={{ strokeDashoffset: dashOffset }}
+              transition={{ duration: 1.2, ease: 'easeOut' }}
               strokeLinecap="round"
               transform="rotate(-90 50 50)"
-              style={{ transition: 'stroke-dashoffset 1s ease-out' }}
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-h2 font-bold font-heading text-text">{score}</span>
+            <span className="text-h2 font-bold font-heading text-text">{currentScore}</span>
           </div>
         </div>
         {/* Text */}

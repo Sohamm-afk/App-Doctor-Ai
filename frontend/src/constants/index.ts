@@ -24,6 +24,7 @@ export const ROUTES = {
   PROJECT_FIXES:         (id: string) => `/workspace/project/${id}/fixes`,
   PROJECT_REPORTS:       (id: string) => `/workspace/project/${id}/reports`,
   PROJECT_SETTINGS:      (id: string) => `/workspace/project/${id}/settings`,
+  PROJECT_DEPLOY:        (id: string) => `/workspace/project/${id}/deploy`,
 } as const;
 
 // ─── Navigation Items ─────────────────────────────────────────────

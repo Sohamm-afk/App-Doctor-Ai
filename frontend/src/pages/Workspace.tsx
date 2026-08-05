@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +17,7 @@ const fadeUp = {
 };
 
 export default function WorkspacePage() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -72,8 +73,13 @@ export default function WorkspacePage() {
             {loading ? <Skeleton height={16} className="w-40" /> : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <Button variant="primary" size="md" leftIcon={<Plus size={16} />}>
-          <Link to={ROUTES.WORKSPACE_UPLOAD}>New Project</Link>
+        <Button 
+          variant="primary" 
+          size="md" 
+          leftIcon={<Plus size={16} />}
+          onClick={() => navigate(ROUTES.WORKSPACE_UPLOAD)}
+        >
+          New Project
         </Button>
       </div>
 
