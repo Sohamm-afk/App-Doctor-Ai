@@ -12,7 +12,7 @@ import { DiffViewer, CodeBlock } from '@/components/code/CodeBlock';
 import { useToast } from '@/components/ui/Toast';
 import { Spinner, Skeleton } from '@/components/ui/Loading';
 import axios from 'axios';
-import { cn } from '@/utils';
+import { cn, getApiBaseUrl } from '@/utils';
 
 // Helper to determine the category of a patch
 function getPatchCategory(patch: any): 'Security' | 'Architecture' | 'Performance' | 'Cloud Readiness' | 'Technical Debt' {
@@ -186,7 +186,7 @@ export default function FixesPage() {
   }, [id, scanResult]);
 
   const fetchFixes = (result: any) => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+    const apiBaseUrl = getApiBaseUrl();
     axios.post(`${apiBaseUrl}/api/ai/fixes`, { scanResult: result })
       .then(({ data }) => {
         const generatedFixes = data.fixes || [];
@@ -287,7 +287,7 @@ export default function FixesPage() {
 
       if (githubUrl) {
         // Trigger true repository re-analysis
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+        const apiBaseUrl = getApiBaseUrl();
         const res = await axios.post(`${apiBaseUrl}/api/analyze`, { github_url: githubUrl });
         const freshData = res.data;
         

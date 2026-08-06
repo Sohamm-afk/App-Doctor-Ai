@@ -2,7 +2,14 @@
  * API configuration.
  * When the FastAPI backend is ready, set VITE_API_BASE_URL in .env.
  */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL;
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return window.location.origin;
+  }
+  return `${window.location.protocol}//${window.location.hostname}:5000`;
+};
+const API_BASE_URL = getApiBaseUrl();
 
 export const API_CONFIG = {
   BASE_URL:    API_BASE_URL,

@@ -5,6 +5,15 @@ import type { Severity, Status, LaunchRecommendation } from '@/types';
 
 // ─── Class Name Helper ────────────────────────────────────────────
 
+/** Dynamic API Base URL helper for local and tunnel/deployment support */
+export function getApiBaseUrl(): string {
+  if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL;
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return window.location.origin;
+  }
+  return `${window.location.protocol}//${window.location.hostname}:5000`;
+}
+
 /** Merges Tailwind classes safely, resolving conflicts. */
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));

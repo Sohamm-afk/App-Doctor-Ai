@@ -10,7 +10,7 @@ import axios from 'axios';
 import { Terminal } from '@/components/terminal/Terminal';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/constants';
-import { cn } from '@/utils';
+import { cn, getApiBaseUrl } from '@/utils';
 import { useToast } from '@/components/ui/Toast';
 
 // ─── Stage Interface ──────────────────────────────────────────────
@@ -270,7 +270,7 @@ export default function ScanningPage() {
     }
 
     setApiLoading(true);
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+    const apiBaseUrl = getApiBaseUrl();
 
     axios.post(`${apiBaseUrl}/api/analyze`, { github_url })
       .then((res) => {

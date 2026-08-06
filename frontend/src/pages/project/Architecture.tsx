@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
 import { PremiumAIRecommendationCard } from '@/components/cards/Cards';
 import { Skeleton, SkeletonCard } from '@/components/ui/Loading';
+import { getApiBaseUrl } from '@/utils';
 
 import { collectEvidence } from '@/architecture/evidence/EvidenceCollector';
 import { detectTechnologies } from '@/architecture/detectors';
@@ -178,7 +179,7 @@ function ArchitectureFlow() {
     const scanData = JSON.parse(localScanData);
     setScanResult(scanData);
 
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+    const apiBaseUrl = getApiBaseUrl();
 
     // Always call the AI architecture endpoint to generate a real diagram
     fetch(`${apiBaseUrl}/api/ai/architecture`, {

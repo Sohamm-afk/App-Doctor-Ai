@@ -6,7 +6,7 @@ import { DataTable } from '@/components/common/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
-import { formatBytes, formatRelativeTime } from '@/utils';
+import { formatBytes, formatRelativeTime, getApiBaseUrl } from '@/utils';
 import type { Report, TableColumn } from '@/types';
 import axios from 'axios';
 
@@ -94,7 +94,7 @@ export default function ReportsPage() {
       const localFixes = localStorage.getItem(`one_click_fixes_${id}`);
       const fixes = localFixes ? JSON.parse(localFixes) : [];
 
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+      const apiBaseUrl = getApiBaseUrl();
       
       const response = await axios.post(`${apiBaseUrl}/api/ai/report/pdf`, {
         scanResult,

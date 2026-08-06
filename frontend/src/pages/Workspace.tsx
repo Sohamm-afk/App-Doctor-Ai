@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search, Filter, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ProjectCard } from '@/components/cards/Cards';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -21,7 +21,13 @@ export default function WorkspacePage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const { error } = useToast();
+  const { success, error } = useToast();
+
+  const handleResetWorkspace = () => {
+    localStorage.clear();
+    setProjects([]);
+    success('Workspace Cleared', 'All previous scan results have been removed. Ready for a fresh scan!');
+  };
 
   useEffect(() => {
     const listStr = localStorage.getItem('scanned_projects_list') || '[]';
@@ -73,15 +79,28 @@ export default function WorkspacePage() {
             {loading ? <Skeleton height={16} className="w-40" /> : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <Button 
-          variant="primary" 
-          size="md" 
-          leftIcon={<Plus size={16} />}
-          onClick={() => navigate(ROUTES.WORKSPACE_UPLOAD)}
-        >
-          New Project
-        </Button>
+        <div className="flex items-center gap-3">
+          {projects.length > 0 && (
+            <Button
+              variant="outline"
+              size="md"
+              leftIcon={<RotateCcw size={16} />}
+              onClick={handleResetWorkspace}
+            >
+              Clear Scans
+            </Button>
+          )}
+          <Button 
+            variant="primary" 
+            size="md" 
+            leftIcon={<Plus size={16} />}
+            onClick={() => navigate(ROUTES.WORKSPACE_UPLOAD)}
+          >
+            New Project
+          </Button>
+        </div>
       </div>
+
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-6">

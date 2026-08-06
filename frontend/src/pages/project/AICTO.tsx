@@ -6,6 +6,7 @@ import axios from 'axios';
 import { Button } from '@/components/ui/Button';
 import { InformationCard } from '@/components/cards/Cards';
 import { useToast } from '@/components/ui/Toast';
+import { getApiBaseUrl } from '@/utils';
 import type { ChatMessage } from '@/types';
 
 // ─── Dynamic question generator ─────────────────────────────────────────────
@@ -396,7 +397,7 @@ Ask me anything — architecture decisions, deployment readiness, what to fix fi
     setTyping(true);
 
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+      const apiBaseUrl = getApiBaseUrl();
 
       // On the first message of a session, seed the server with scanResult.
       // On all subsequent messages the server already has the cached context.
@@ -433,7 +434,7 @@ Ask me anything — architecture decisions, deployment readiness, what to fix fi
   const handleResetChat = async () => {
     if (typing) return;
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+      const apiBaseUrl = getApiBaseUrl();
       await axios.post(`${apiBaseUrl}/api/ai/session/clear`, { sessionId });
     } catch (_) {
       // Silent — local reset still proceeds even if the server call fails
@@ -477,7 +478,7 @@ What would you like to dive into?`,
     if (!scanResult || typing) return;
     setTyping(true);
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+      const apiBaseUrl = getApiBaseUrl();
       const { data } = await axios.post(`${apiBaseUrl}/api/ai/review`, { scanResult });
       if (data?.review) {
         const reportMessage: ChatMessage = {

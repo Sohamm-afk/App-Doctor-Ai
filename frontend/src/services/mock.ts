@@ -8,7 +8,7 @@ import type {
   Project, SecurityIssue, PerformanceMetric,
   CloudEstimate, Report, ChatMessage, ChatSession,
 } from '@/types';
-import { generateId } from '@/utils';
+import { generateId, getApiBaseUrl } from '@/utils';
 import axios from 'axios';
 
 /** Simulate a network delay. */
@@ -175,7 +175,7 @@ export async function mockGetChatSession(projectId: string): Promise<ChatSession
   const localScanData = localStorage.getItem(`scan_result_${projectId}`);
   if (localScanData) {
     const scanResult = JSON.parse(localScanData);
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+    const apiBaseUrl = getApiBaseUrl();
     try {
       const { data } = await axios.post(`${apiBaseUrl}/api/ai/review`, { scanResult });
       if (data.review) {
@@ -223,7 +223,7 @@ export async function mockSendChatMessage(sessionId: string, content: string): P
   const projectId = sessionId.replace('chat-', '');
   const localScanData = localStorage.getItem(`scan_result_${projectId}`);
   const scanResult = localScanData ? JSON.parse(localScanData) : null;
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+  const apiBaseUrl = getApiBaseUrl();
   try {
     const { data } = await axios.post(`${apiBaseUrl}/api/ai/chat`, {
       message: content,
